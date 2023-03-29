@@ -11,6 +11,7 @@ const pages = [
       { pathname: '/base-ui/getting-started/quickstart', title: 'Quickstart' },
       { pathname: '/base-ui/getting-started/usage', title: 'Usage' },
       { pathname: '/base-ui/getting-started/customization', title: 'Customization' },
+      { pathname: '/base-ui/getting-started/tutorial', title: 'Tutorial' },
     ],
   },
   {

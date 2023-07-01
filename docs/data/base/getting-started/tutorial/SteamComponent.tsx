@@ -1,15 +1,15 @@
 import * as React from 'react';
 import { styled, alpha } from '@mui/system';
-import SwitchUnstyled, { switchUnstyledClasses } from '@mui/base/SwitchUnstyled';
-import SelectUnstyled, {
-  selectUnstyledClasses,
-  SelectUnstyledProps,
-  SelectUnstyledRootSlotProps,
-} from '@mui/base/SelectUnstyled';
-import OptionUnstyled, { optionUnstyledClasses } from '@mui/base/OptionUnstyled';
-import PopperUnstyled from '@mui/base/PopperUnstyled';
+import Switch, { switchClasses } from '@mui/base/Switch';
+import Select, {
+  selectClasses,
+  SelectProps,
+  SelectRootSlotProps,
+} from '@mui/base/Select';
+import Option, { optionClasses } from '@mui/base/Option';
+import Popper from '@mui/base/Popper';
 import ArrowDropDownOutlinedIcon from '@mui/icons-material/ArrowDropDownOutlined';
-import SliderUnstyled, { sliderUnstyledClasses } from '@mui/base/SliderUnstyled';
+import Slider, { sliderClasses } from '@mui/base/Slider';
 
 const HOURS = [
   '12AM',
@@ -108,12 +108,12 @@ const SwitchRoot = styled('span')(
   height: 24px;
   cursor: pointer;
 
-  &.${switchUnstyledClasses.disabled} {
+  &.${switchClasses.disabled} {
     opacity: 0.4;
     cursor: not-allowed;
   }
 
-  & .${switchUnstyledClasses.track} {
+  & .${switchClasses.track} {
     background: ${theme.palette.mode === 'dark' ? grey[600] : grey[400]};
     border-radius: 16px;
     display: block;
@@ -123,7 +123,7 @@ const SwitchRoot = styled('span')(
     border: 3px solid ${blue[999]};
   }
 
-  & .${switchUnstyledClasses.thumb} {
+  & .${switchClasses.thumb} {
     display: block;
     width: 20px;
     height: 20px;
@@ -138,24 +138,24 @@ const SwitchRoot = styled('span')(
     transition-duration: 120ms;
   }
 
-  &.${switchUnstyledClasses.focusVisible} .${switchUnstyledClasses.thumb} {
+  &.${switchClasses.focusVisible} .${switchClasses.thumb} {
     background-color: ${grey[500]};
     box-shadow: 0 0 1px 8px rgba(0, 0, 0, 0.25);
   }
 
-  &.${switchUnstyledClasses.checked} {
-    .${switchUnstyledClasses.thumb} {
+  &.${switchClasses.checked} {
+    .${switchClasses.thumb} {
       left: 20px;
       top: 2.5px;
       background-color: #fff;
     }
 
-    .${switchUnstyledClasses.track} {
+    .${switchClasses.track} {
       background: ${blue[400]};
     }
   }
 
-  & .${switchUnstyledClasses.input} {
+  & .${switchClasses.input} {
     cursor: inherit;
     position: absolute;
     width: 100%;
@@ -173,7 +173,7 @@ const Button = React.forwardRef(function Button<
   TValue extends {},
   Multiple extends boolean,
 >(
-  props: SelectUnstyledRootSlotProps<TValue, Multiple>,
+  props: SelectRootSlotProps<TValue, Multiple>,
   ref: React.ForwardedRef<HTMLButtonElement>,
 ) {
   const { ownerState, ...other } = props;
@@ -210,7 +210,7 @@ const StyledButton = styled(Button, { shouldForwardProp: () => true })(
     color: ${grey[900]}
   }
 
-  &.${selectUnstyledClasses.focusVisible} {
+  &.${selectClasses.focusVisible} {
     border-color: ${blue[400]};
     outline: 3px solid ${theme.palette.mode === 'dark' ? blue[500] : blue[200]};
   }
@@ -241,7 +241,7 @@ const StyledListbox = styled('ul')`
   max-height: 240px;
 `;
 
-const StyledOption = styled(OptionUnstyled)(
+const StyledOption = styled(Option)(
   ({ theme }) => `
   list-style: none;
   padding: 8px;
@@ -252,43 +252,40 @@ const StyledOption = styled(OptionUnstyled)(
     border-bottom: none;
   }
 
-  &.${optionUnstyledClasses.selected} {
+  &.${optionClasses.selected} {
     background-color: ${theme.palette.mode === 'dark' ? blue[900] : blue[100]};
     color: ${theme.palette.mode === 'dark' ? blue[100] : blue[900]};
   }
 
-  &.${optionUnstyledClasses.highlighted} {
+  &.${optionClasses.highlighted} {
     background-color: ${grey[100]};
     color: ${grey[900]};
   }
 
-  &.${optionUnstyledClasses.highlighted}.${optionUnstyledClasses.selected} {
+  &.${optionClasses.highlighted}.${optionClasses.selected} {
     background-color: ${grey[700]};
     color: ${grey[50]};
   }
 
-  &.${optionUnstyledClasses.disabled} {
+  &.${optionClasses.disabled} {
     color: ${theme.palette.mode === 'dark' ? grey[700] : grey[400]};
   }
 
-  &:hover:not(.${optionUnstyledClasses.disabled}) {
+  &:hover:not(.${optionClasses.disabled}) {
     background-color: ${theme.palette.mode === 'dark' ? grey[800] : grey[100]};
     color: ${theme.palette.mode === 'dark' ? grey[300] : grey[900]};
   }
   `,
 );
 
-const StyledPopper = styled(PopperUnstyled)`
+const StyledPopper = styled(Popper)`
   z-index: 1;
 `;
 
 const CustomSelect = React.forwardRef(function CustomSelect<
   TValue extends {},
   Multiple extends boolean,
->(
-  props: SelectUnstyledProps<TValue, Multiple>,
-  ref: React.ForwardedRef<HTMLButtonElement>,
-) {
+>(props: SelectProps<TValue, Multiple>, ref: React.ForwardedRef<HTMLButtonElement>) {
   const slots = {
     root: StyledButton,
     listbox: StyledListbox,
@@ -296,7 +293,7 @@ const CustomSelect = React.forwardRef(function CustomSelect<
     ...props.slots,
   };
 
-  return <SelectUnstyled {...props} ref={ref} slots={slots} />;
+  return <Select {...props} ref={ref} slots={slots} />;
 });
 
 const SelectContainer = styled('div')`
@@ -313,7 +310,7 @@ const SelectContainer = styled('div')`
   }
 `;
 
-const StyledSlider = styled(SliderUnstyled)(
+const StyledSlider = styled(Slider)(
   ({ theme }) => `
   color: ${blue[500]};
   height: 6px;
@@ -330,14 +327,14 @@ const StyledSlider = styled(SliderUnstyled)(
     opacity: 1;
   }
 
-  &.${sliderUnstyledClasses.disabled} { 
+  &.${sliderClasses.disabled} {
     pointer-events: none;
     cursor: default;
     color: ${theme.palette.mode === 'light' ? grey[300] : grey[600]};
     opacity: 0.5;
   }
 
-  & .${sliderUnstyledClasses.rail} {
+  & .${sliderClasses.rail} {
     display: block;
     position: absolute;
     width: 100%;
@@ -347,7 +344,7 @@ const StyledSlider = styled(SliderUnstyled)(
     opacity: 0.4;
   }
 
-  & .${sliderUnstyledClasses.track} {
+  & .${sliderClasses.track} {
     display: block;
     position: absolute;
     height: 6px;
@@ -355,7 +352,7 @@ const StyledSlider = styled(SliderUnstyled)(
     background-color: currentColor;
   }
 
-  & .${sliderUnstyledClasses.thumb} {
+  & .${sliderClasses.thumb} {
     position: absolute;
     width: 20px;
     height: 20px;
@@ -367,14 +364,14 @@ const StyledSlider = styled(SliderUnstyled)(
     background-color: #fff;
 
     :hover,
-    &.${sliderUnstyledClasses.focusVisible} {
+    &.${sliderClasses.focusVisible} {
       box-shadow: 0 0 0 0.25rem ${alpha(
         theme.palette.mode === 'light' ? blue[400] : blue[300],
         0.15,
       )};
     }
 
-    &.${sliderUnstyledClasses.active} {
+    &.${sliderClasses.active} {
       box-shadow: 0 0 0 0.25rem ${alpha(
         theme.palette.mode === 'light' ? blue[200] : blue[300],
         0.3,
@@ -382,7 +379,7 @@ const StyledSlider = styled(SliderUnstyled)(
     }
   }
 
-  & .${sliderUnstyledClasses.mark} {
+  & .${sliderClasses.mark} {
     position: absolute;
     width: 4px;
     height: 4px;
@@ -392,11 +389,11 @@ const StyledSlider = styled(SliderUnstyled)(
     opacity: 0;
   }
 
-  & .${sliderUnstyledClasses.markActive} {
+  & .${sliderClasses.markActive} {
     background-color: #fff;
   }
 
-  & .${sliderUnstyledClasses.markLabel} {
+  & .${sliderClasses.markLabel} {
     font-family: system-ui, IBM Plex Sans, sans-serif;
     font-size: 10px;
     font-weight: 800;
@@ -424,7 +421,7 @@ export default function SteamComponent() {
       <Heading>Night Mode</Heading>
       <Row>
         <Label>Schedule Night Mode</Label>
-        <SwitchUnstyled
+        <Switch
           slots={{
             root: SwitchRoot,
           }}
@@ -458,7 +455,7 @@ export default function SteamComponent() {
 
       <Row>
         <Label>Enable Night Mode (until morning)</Label>
-        <SwitchUnstyled
+        <Switch
           slots={{
             root: SwitchRoot,
           }}

@@ -16,11 +16,6 @@ MUI Base includes prebuilt components with production-ready functionality, alon
 
 With MUI Base, you can rapidly build on top of our foundational components using any styling solution you choose—no need to override any default style engine or theme.
 
-:::warning
-MUI Base's API is currently being revised; there will be no new features or components added to the current implementation.
-Learn more about plans for MUI Base in [this blog post](/blog/base-ui-2024-plans/).
-:::
-
 ## Advantages of MUI Base
 
 - **Ship faster:** MUI Base gives you the foundational building blocks you need to assemble a sleek and sophisticated user interface in a fraction of the time that it would take to do it all from scratch.

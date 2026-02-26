@@ -20,6 +20,8 @@ import { CardMediaProps } from '../CardMedia';
 import { CardProps } from '../Card';
 import { CheckboxProps } from '../Checkbox';
 import { ChipProps } from '../Chip';
+import { ChipButtonProps } from '../ChipButton';
+import { ChipLinkProps } from '../ChipLink';
 import { CircularProgressProps } from '../CircularProgress';
 import { CollapseProps } from '../Collapse';
 import { ContainerProps } from '../Container';
@@ -145,6 +147,8 @@ export interface ComponentsPropsList {
   MuiCardMedia: CardMediaProps;
   MuiCheckbox: CheckboxProps;
   MuiChip: ChipProps;
+  MuiChipButton: ChipButtonProps;
+  MuiChipLink: ChipLinkProps;
   MuiCircularProgress: CircularProgressProps;
   MuiCollapse: CollapseProps;
   MuiContainer: ContainerProps;

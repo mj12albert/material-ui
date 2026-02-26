@@ -27,6 +27,8 @@ import { CardHeaderClassKey } from '../CardHeader';
 import { CardMediaClassKey } from '../CardMedia';
 import { CheckboxClassKey } from '../Checkbox';
 import { ChipClassKey } from '../Chip';
+import { ChipButtonClassKey } from '../ChipButton';
+import { ChipLinkClassKey } from '../ChipLink';
 import { CircularProgressClassKey } from '../CircularProgress';
 import { CollapseClassKey } from '../Collapse';
 import { ContainerClassKey } from '../Container';
@@ -168,6 +170,8 @@ export interface ComponentNameToClassKey {
   MuiCardMedia: CardMediaClassKey;
   MuiCheckbox: CheckboxClassKey;
   MuiChip: ChipClassKey;
+  MuiChipButton: ChipButtonClassKey;
+  MuiChipLink: ChipLinkClassKey;
   MuiCircularProgress: CircularProgressClassKey;
   MuiCollapse: CollapseClassKey;
   MuiContainer: ContainerClassKey;

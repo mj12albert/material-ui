@@ -28,7 +28,7 @@ export default function ChipButton(props: ChipButtonProps) {
     onClick,
     onDelete,
     deleteIcon,
-    deleteLabel = 'Delete',
+    deleteLabel = 'Remove',
     disabled = false,
     focusableWhenDisabled = true,
     size = 'medium',
@@ -41,7 +41,7 @@ export default function ChipButton(props: ChipButtonProps) {
   const labelId = React.useId();
   const hasDelete = Boolean(onDelete);
   const iconElement = avatar || icon;
-  const actionKeyHandlers = useChipDeleteKeyHandlers(hasDelete, onDelete);
+  const actionKeyHandlers = useChipDeleteKeyHandlers(onDelete);
 
   // In overlay mode, split `other` so visual props go to the root <div>
   // and semantic/interactive props go to the action <button>.

@@ -83,8 +83,8 @@ function isDeleteKeyboardEvent(event: React.KeyboardEvent) {
  * These fire `onDelete` on Backspace/Delete keystrokes.
  * Only applied to the action element — NOT the delete button.
  */
-export function useChipDeleteKeyHandlers(enabled: boolean, onDelete?: React.EventHandler<any>) {
-  if (!enabled || !onDelete) {
+export function useChipDeleteKeyHandlers(onDelete?: React.EventHandler<any>) {
+  if (!onDelete) {
     return {};
   }
   return {

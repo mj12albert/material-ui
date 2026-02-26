@@ -3,7 +3,7 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Avatar from '@mui/material/Avatar';
 import FaceIcon from '@mui/icons-material/Face';
-import DoneIcon from '@mui/icons-material/Done';
+import DeleteIcon from '@mui/icons-material/Delete';
 import ChipButton from './components/ChipButton';
 import ChipLink from './components/ChipLink';
 
@@ -97,7 +97,7 @@ export default function ChipDemo() {
           label="Custom delete icon"
           onDelete={() => {}}
           onClick={() => {}}
-          deleteIcon={<DoneIcon />}
+          deleteIcon={<DeleteIcon />}
         />
         <ChipButton
           label="Outlined deletable"

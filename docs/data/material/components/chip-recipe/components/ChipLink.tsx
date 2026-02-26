@@ -32,7 +32,7 @@ export default function ChipLink(props: ChipLinkProps) {
     href,
     onDelete,
     deleteIcon,
-    deleteLabel = 'Delete',
+    deleteLabel = 'Remove',
     size = 'medium',
     color = 'default',
     variant = 'filled',
@@ -43,7 +43,7 @@ export default function ChipLink(props: ChipLinkProps) {
   const labelId = React.useId();
   const hasDelete = Boolean(onDelete);
   const iconElement = avatar || icon;
-  const actionKeyHandlers = useChipDeleteKeyHandlers(hasDelete, onDelete);
+  const actionKeyHandlers = useChipDeleteKeyHandlers(onDelete);
 
   // In overlay mode, split `other` so visual props go to the root <div>
   // and semantic/interactive props (target, rel, aria-*) go to the action <a>.

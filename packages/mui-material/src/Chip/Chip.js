@@ -4,36 +4,59 @@ import PropTypes from 'prop-types';
 import clsx from 'clsx';
 import composeClasses from '@mui/utils/composeClasses';
 import CancelIcon from '../internal/svg-icons/Cancel';
-import useForkRef from '../utils/useForkRef';
 import unsupportedProp from '../utils/unsupportedProp';
 import capitalize from '../utils/capitalize';
 import ButtonBase from '../ButtonBase';
+import rootShouldForwardProp from '../styles/rootShouldForwardProp';
 import { styled } from '../zero-styled';
 import memoTheme from '../utils/memoTheme';
 import createSimplePaletteValueFilter from '../utils/createSimplePaletteValueFilter';
 import { useDefaultProps } from '../DefaultPropsProvider';
-import rootShouldForwardProp from '../styles/rootShouldForwardProp';
 import chipClasses, { getChipUtilityClass } from './chipClasses';
 import useSlot from '../utils/useSlot';
+import ChipContext from './ChipContext';
+import { getChipBaseStyles, getChipRootStyles, getChipAdornmentStyles } from './chipSharedStyles';
+import { isDeleteKeyboardEvent } from './utils';
+import chipButtonClasses from '../ChipButton/chipButtonClasses';
+import chipLinkClasses from '../ChipLink/chipLinkClasses';
 
-const useUtilityClasses = (ownerState) => {
-  const { classes, disabled, size, color, onDelete, clickable, variant } = ownerState;
+const chipActionFocusVisibleSelector = [
+  `&:has(> .${chipButtonClasses.root}:focus-visible)`,
+  `&:has(> .${chipLinkClasses.root}:focus-visible)`,
+].join(', ');
 
-  const slots = {
-    root: [
-      'root',
-      variant,
-      disabled && 'disabled',
-      `size${capitalize(size)}`,
-      `color${capitalize(color)}`,
-      clickable && 'clickable',
-      onDelete && 'deletable',
-    ],
-    label: ['label'],
-    avatar: ['avatar'],
-    icon: ['icon'],
-    deleteIcon: ['deleteIcon'],
-  };
+const useUtilityClasses = (ownerState, isNewApi) => {
+  const { classes, disabled, size, color, onDelete, clickable, variant, action } = ownerState;
+
+  const slots = isNewApi
+    ? {
+        root: [
+          'root',
+          variant,
+          disabled && 'disabled',
+          `size${capitalize(size)}`,
+          `color${capitalize(color)}`,
+          action && 'actionable',
+        ],
+        label: ['label'],
+        startAdornment: ['startAdornment'],
+        endAdornment: ['endAdornment'],
+      }
+    : {
+        root: [
+          'root',
+          variant,
+          disabled && 'disabled',
+          `size${capitalize(size)}`,
+          `color${capitalize(color)}`,
+          clickable && 'clickable',
+          onDelete && 'deletable',
+        ],
+        label: ['label'],
+        avatar: ['avatar'],
+        icon: ['icon'],
+        deleteIcon: ['deleteIcon'],
+      };
 
   return composeClasses(slots, getChipUtilityClass, classes);
 };
@@ -66,28 +89,7 @@ const ChipRoot = styled('div', {
     const textColor =
       theme.palette.mode === 'light' ? theme.palette.grey[700] : theme.palette.grey[300];
     return {
-      maxWidth: '100%',
-      fontFamily: theme.typography.fontFamily,
-      fontSize: theme.typography.pxToRem(13),
-      display: 'inline-flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      height: 32,
-      lineHeight: 1.5,
-      color: (theme.vars || theme).palette.text.primary,
-      backgroundColor: (theme.vars || theme).palette.action.selected,
-      borderRadius: 32 / 2,
-      whiteSpace: 'nowrap',
-      transition: theme.transitions.create(['background-color', 'box-shadow']),
-      // reset cursor explicitly in case ButtonBase is used
-      cursor: 'unset',
-      // We disable the focus ring for mouse, touch and keyboard users.
-      outline: 0,
-      textDecoration: 'none',
-      border: 0, // Remove `button` border
-      padding: 0, // Remove `button` padding
-      verticalAlign: 'middle',
-      boxSizing: 'border-box',
+      ...getChipBaseStyles(theme),
       [`&.${chipClasses.disabled}`]: {
         opacity: (theme.vars || theme).palette.action.disabledOpacity,
         pointerEvents: 'none',
@@ -332,6 +334,13 @@ const ChipLabel = styled('span', {
   whiteSpace: 'nowrap',
   variants: [
     {
+      props: { action: true },
+      style: {
+        position: 'relative',
+        zIndex: 1,
+      },
+    },
+    {
       props: { variant: 'outlined' },
       style: {
         paddingLeft: 11,
@@ -355,9 +364,94 @@ const ChipLabel = styled('span', {
   ],
 });
 
-function isDeleteKeyboardEvent(keyboardEvent) {
-  return keyboardEvent.key === 'Backspace' || keyboardEvent.key === 'Delete';
-}
+const ChipNewApiRoot = styled('div', {
+  name: 'MuiChip',
+  slot: 'Root',
+  overridesResolver: (props, styles) => {
+    const { ownerState } = props;
+    const { color, size, variant, action } = ownerState;
+    return [
+      styles.root,
+      styles[`size${capitalize(size)}`],
+      styles[`color${capitalize(color)}`],
+      styles[variant],
+      action && styles.actionable,
+    ];
+  },
+})(
+  memoTheme(({ theme }) => {
+    const baseStyles = getChipRootStyles(theme, {
+      focusVisible: chipClasses.focusVisible,
+      disabled: chipClasses.disabled,
+    });
+    return {
+      ...baseStyles,
+      [`&.${chipClasses.disabled}`]: {
+        opacity: (theme.vars || theme).palette.action.disabledOpacity,
+        pointerEvents: 'none',
+      },
+      variants: [
+        ...baseStyles.variants,
+        {
+          props: { action: true },
+          style: {
+            [chipActionFocusVisibleSelector]: {
+              outline: `2px solid ${(theme.vars || theme).palette.primary.main}`,
+              outlineOffset: 2,
+              backgroundColor: theme.alpha(
+                (theme.vars || theme).palette.action.selected,
+                `${(theme.vars || theme).palette.action.selectedOpacity} + ${(theme.vars || theme).palette.action.focusOpacity}`,
+              ),
+            },
+          },
+        },
+        ...Object.entries(theme.palette)
+          .filter(createSimplePaletteValueFilter(['dark']))
+          .map(([color]) => ({
+            props: { action: true, color },
+            style: {
+              [chipActionFocusVisibleSelector]: {
+                backgroundColor: (theme.vars || theme).palette[color].dark,
+              },
+            },
+          })),
+        {
+          props: { action: true, variant: 'outlined' },
+          style: {
+            [chipActionFocusVisibleSelector]: {
+              backgroundColor: (theme.vars || theme).palette.action.focus,
+            },
+          },
+        },
+        ...Object.entries(theme.palette)
+          .filter(createSimplePaletteValueFilter())
+          .map(([color]) => ({
+            props: { action: true, variant: 'outlined', color },
+            style: {
+              [chipActionFocusVisibleSelector]: {
+                backgroundColor: theme.alpha(
+                  (theme.vars || theme).palette[color].main,
+                  (theme.vars || theme).palette.action.focusOpacity,
+                ),
+              },
+            },
+          })),
+      ],
+    };
+  }),
+);
+
+const ChipStartAdornment = styled('span', {
+  name: 'MuiChip',
+  slot: 'StartAdornment',
+  overridesResolver: (props, styles) => styles.startAdornment,
+})(memoTheme(({ theme }) => getChipAdornmentStyles(theme, 'start')));
+
+const ChipEndAdornment = styled('span', {
+  name: 'MuiChip',
+  slot: 'EndAdornment',
+  overridesResolver: (props, styles) => styles.endAdornment,
+})(memoTheme(({ theme }) => getChipAdornmentStyles(theme, 'end')));
 
 /**
  * Chips represent complex entities in small blocks, such as a contact.
@@ -365,6 +459,7 @@ function isDeleteKeyboardEvent(keyboardEvent) {
 const Chip = React.forwardRef(function Chip(inProps, ref) {
   const props = useDefaultProps({ props: inProps, name: 'MuiChip' });
   const {
+    action,
     avatar: avatarProp,
     className,
     clickable: clickableProp,
@@ -372,6 +467,7 @@ const Chip = React.forwardRef(function Chip(inProps, ref) {
     component: ComponentProp,
     deleteIcon: deleteIconProp,
     disabled = false,
+    endAdornment,
     icon: iconProp,
     label,
     onClick,
@@ -379,6 +475,7 @@ const Chip = React.forwardRef(function Chip(inProps, ref) {
     onKeyDown,
     onKeyUp,
     size = 'medium',
+    startAdornment,
     variant = 'filled',
     tabIndex,
     skipFocusWhenDisabled = false, // TODO v6: Rename to `focusableWhenDisabled`.
@@ -388,16 +485,49 @@ const Chip = React.forwardRef(function Chip(inProps, ref) {
   } = props;
   const { nativeButton, ...buttonBaseProps } = other;
 
-  const chipRef = React.useRef(null);
-  const handleRef = useForkRef(chipRef, ref);
+  // Detect new slot-based API (loose null check so `null` from ternaries is treated as absent)
+  const isNewApi = action != null || startAdornment != null || endAdornment != null;
 
-  const handleDeleteIconClick = (event) => {
-    // Stop the event from bubbling up to the `Chip`
-    event.stopPropagation();
-    onDelete(event);
-  };
+  // Dev warnings for new API
+  if (process.env.NODE_ENV !== 'production') {
+    if (isNewApi) {
+      if (
+        action &&
+        action.type &&
+        action.type.muiName !== 'ChipButton' &&
+        action.type.muiName !== 'ChipLink'
+      ) {
+        console.error(
+          'MUI: The Chip `action` prop expects a `<ChipButton>` or `<ChipLink>` element.',
+        );
+      }
+      if (action && (onClick || clickableProp !== undefined)) {
+        console.error(
+          'MUI: When `action` is provided, `onClick` and `clickable` are ignored. ' +
+            'Pass event handlers directly to the action element.',
+        );
+      }
+      if ((startAdornment || endAdornment) && onDelete) {
+        console.error(
+          'MUI: When `startAdornment` or `endAdornment` is provided, `onDelete` is ignored. ' +
+            'Use `<ChipDelete>` as an adornment instead.',
+        );
+      }
+      if (startAdornment && (avatarProp || iconProp)) {
+        console.error(
+          'MUI: When `startAdornment` is provided, `avatar` and `icon` are ignored. ' +
+            'Place content directly inside `startAdornment`.',
+        );
+      }
+    }
+  }
 
   const handleKeyDown = (event) => {
+    // Legacy-only handler: new API delegates keyboard handling to the action element.
+    if (isNewApi) {
+      return;
+    }
+
     // Ignore events from children of `Chip`.
     if (event.currentTarget === event.target && isDeleteKeyboardEvent(event)) {
       // Will be handled in keyUp, otherwise some browsers
@@ -411,6 +541,11 @@ const Chip = React.forwardRef(function Chip(inProps, ref) {
   };
 
   const handleKeyUp = (event) => {
+    // Legacy-only handler: new API delegates keyboard handling to the action element.
+    if (isNewApi) {
+      return;
+    }
+
     // Ignore events from children of `Chip`.
     if (event.currentTarget === event.target) {
       if (onDelete && isDeleteKeyboardEvent(event)) {
@@ -424,22 +559,36 @@ const Chip = React.forwardRef(function Chip(inProps, ref) {
   };
 
   const clickable = clickableProp !== false && onClick ? true : clickableProp;
-
   const component = clickable || onDelete ? ButtonBase : ComponentProp || 'div';
 
-  const ownerState = {
-    ...props,
-    component,
-    disabled,
-    size,
-    color,
-    iconColor: React.isValidElement(iconProp) ? iconProp.props.color || color : color,
-    onDelete: !!onDelete,
-    clickable,
-    variant,
-  };
+  // ChipLink ignores disabled — suppress disabled styles on the root when action is ChipLink
+  const isChipLink = action && action.type && action.type.muiName === 'ChipLink';
+  const rootDisabled = isChipLink ? false : disabled;
 
-  const classes = useUtilityClasses(ownerState);
+  // ownerState differs by API path
+  const ownerState = isNewApi
+    ? {
+        ...props,
+        color,
+        disabled: rootDisabled,
+        size,
+        variant,
+        action: !!action,
+        interactive: action ? false : undefined,
+      }
+    : {
+        ...props,
+        component,
+        disabled,
+        size,
+        color,
+        iconColor: React.isValidElement(iconProp) ? iconProp.props.color || color : color,
+        onDelete: !!onDelete,
+        clickable,
+        variant,
+      };
+
+  const classes = useUtilityClasses(ownerState, isNewApi);
 
   const moreProps =
     component === ButtonBase
@@ -451,6 +600,108 @@ const Chip = React.forwardRef(function Chip(inProps, ref) {
           ...(nativeButton !== undefined && { nativeButton }),
         }
       : {};
+
+  const externalForwardedProps = {
+    slots,
+    slotProps,
+  };
+
+  // useSlot calls with conditional params (always called, per rules of hooks)
+  const [RootSlot, rootProps] = useSlot('root', {
+    elementType: isNewApi ? ChipNewApiRoot : ChipRoot,
+    externalForwardedProps: {
+      ...externalForwardedProps,
+      ...buttonBaseProps,
+    },
+    ownerState,
+    shouldForwardComponentProp: !isNewApi,
+    ref,
+    className: clsx(classes.root, className),
+    ...(isNewApi
+      ? {}
+      : {
+          additionalProps: {
+            disabled: clickable && disabled ? true : undefined,
+            tabIndex: skipFocusWhenDisabled && disabled ? -1 : tabIndex,
+            ...moreProps,
+          },
+          getSlotProps: (handlers) => ({
+            ...handlers,
+            onClick: (event) => {
+              handlers.onClick?.(event);
+              onClick?.(event);
+            },
+            onKeyDown: (event) => {
+              handlers.onKeyDown?.(event);
+              handleKeyDown(event);
+            },
+            onKeyUp: (event) => {
+              handlers.onKeyUp?.(event);
+              handleKeyUp(event);
+            },
+          }),
+        }),
+  });
+
+  const [LabelSlot, labelProps] = useSlot('label', {
+    elementType: ChipLabel,
+    externalForwardedProps,
+    ownerState,
+    className: classes.label,
+  });
+  const labelElement = React.useMemo(
+    () => <LabelSlot {...labelProps}>{label}</LabelSlot>,
+    [LabelSlot, labelProps, label],
+  );
+
+  const [StartAdornmentSlot, startAdornmentSlotProps] = useSlot('startAdornment', {
+    elementType: ChipStartAdornment,
+    externalForwardedProps,
+    ownerState,
+    className: classes.startAdornment,
+  });
+
+  const [EndAdornmentSlot, endAdornmentSlotProps] = useSlot('endAdornment', {
+    elementType: ChipEndAdornment,
+    externalForwardedProps,
+    ownerState,
+    className: classes.endAdornment,
+  });
+
+  const chipContextValue = React.useMemo(
+    () => ({
+      color,
+      disabled,
+      labelElement,
+      size,
+      variant,
+    }),
+    [color, disabled, labelElement, size, variant],
+  );
+
+  // ---- New API render path ----
+  if (isNewApi) {
+    return (
+      <ChipContext.Provider value={chipContextValue}>
+        <RootSlot as={ComponentProp} {...rootProps}>
+          {startAdornment ? (
+            <StartAdornmentSlot {...startAdornmentSlotProps}>{startAdornment}</StartAdornmentSlot>
+          ) : null}
+          {action || labelElement}
+          {endAdornment ? (
+            <EndAdornmentSlot {...endAdornmentSlotProps}>{endAdornment}</EndAdornmentSlot>
+          ) : null}
+        </RootSlot>
+      </ChipContext.Provider>
+    );
+  }
+
+  // ---- Legacy render path ----
+  const handleDeleteIconClick = (event) => {
+    // Stop the event from bubbling up to the `Chip`
+    event.stopPropagation();
+    onDelete(event);
+  };
 
   let deleteIcon = null;
   if (onDelete) {
@@ -488,51 +739,6 @@ const Chip = React.forwardRef(function Chip(inProps, ref) {
     }
   }
 
-  const externalForwardedProps = {
-    slots,
-    slotProps,
-  };
-
-  const [RootSlot, rootProps] = useSlot('root', {
-    elementType: ChipRoot,
-    externalForwardedProps: {
-      ...externalForwardedProps,
-      ...buttonBaseProps,
-    },
-    ownerState,
-    // The `component` prop is preserved because `Chip` relies on it for internal logic. If `shouldForwardComponentProp` were `false`, `useSlot` would remove the `component` prop, potentially breaking the component's behavior.
-    shouldForwardComponentProp: true,
-    ref: handleRef,
-    className: clsx(classes.root, className),
-    additionalProps: {
-      disabled: clickable && disabled ? true : undefined,
-      tabIndex: skipFocusWhenDisabled && disabled ? -1 : tabIndex,
-      ...moreProps,
-    },
-    getSlotProps: (handlers) => ({
-      ...handlers,
-      onClick: (event) => {
-        handlers.onClick?.(event);
-        onClick?.(event);
-      },
-      onKeyDown: (event) => {
-        handlers.onKeyDown?.(event);
-        handleKeyDown(event);
-      },
-      onKeyUp: (event) => {
-        handlers.onKeyUp?.(event);
-        handleKeyUp(event);
-      },
-    }),
-  });
-
-  const [LabelSlot, labelProps] = useSlot('label', {
-    elementType: ChipLabel,
-    externalForwardedProps,
-    ownerState,
-    className: classes.label,
-  });
-
   return (
     <RootSlot as={component} {...rootProps}>
       {avatar || icon}
@@ -548,7 +754,15 @@ Chip.propTypes /* remove-proptypes */ = {
   // │    To update them, edit the d.ts file and run `pnpm proptypes`.     │
   // └─────────────────────────────────────────────────────────────────────┘
   /**
+   * The action element to render inside the chip.
+   * Should be a `<ChipButton>` or `<ChipLink>` element.
+   * When provided, the chip root becomes a non-interactive shell and the action
+   * element handles all interactivity.
+   */
+  action: PropTypes.element,
+  /**
    * The Avatar element to display.
+   * @deprecated Use `startAdornment` instead. Ignored when `startAdornment` is present.
    */
   avatar: PropTypes.element,
   /**
@@ -571,6 +785,7 @@ Chip.propTypes /* remove-proptypes */ = {
    * This can be used, for example,
    * along with the component prop to indicate an anchor Chip is clickable.
    * Note: this controls the UI and does not affect the onClick event.
+   * @deprecated Use `action={<ChipButton onClick={...} />}` instead. Ignored when `action` is present.
    */
   clickable: PropTypes.bool,
   /**
@@ -590,6 +805,7 @@ Chip.propTypes /* remove-proptypes */ = {
   component: PropTypes.elementType,
   /**
    * Override the default delete icon element. Shown only if `onDelete` is set.
+   * @deprecated Use `endAdornment={<ChipDelete />}` instead. Ignored when `endAdornment` is present.
    */
   deleteIcon: PropTypes.element,
   /**
@@ -598,7 +814,14 @@ Chip.propTypes /* remove-proptypes */ = {
    */
   disabled: PropTypes.bool,
   /**
+   * Content to render after the label.
+   * Typically a `<ChipDelete>` element.
+   * When provided, `onDelete` and `deleteIcon` are ignored.
+   */
+  endAdornment: PropTypes.node,
+  /**
    * Icon element.
+   * @deprecated Use `startAdornment` instead. Ignored when `startAdornment` is present.
    */
   icon: PropTypes.element,
   /**
@@ -619,6 +842,7 @@ Chip.propTypes /* remove-proptypes */ = {
   /**
    * Callback fired when the delete icon is clicked.
    * If set, the delete icon will be shown.
+   * @deprecated Use `endAdornment={<ChipDelete onClick={...} />}` instead. Ignored when `endAdornment` is present.
    */
   onDelete: PropTypes.func,
   /**
@@ -641,6 +865,7 @@ Chip.propTypes /* remove-proptypes */ = {
    * If `true`, allows the disabled chip to escape focus.
    * If `false`, allows the disabled chip to receive focus.
    * @default false
+   * @deprecated Use `focusableWhenDisabled` on the action element instead.
    */
   skipFocusWhenDisabled: PropTypes.bool,
   /**
@@ -648,17 +873,27 @@ Chip.propTypes /* remove-proptypes */ = {
    * @default {}
    */
   slotProps: PropTypes.shape({
+    endAdornment: PropTypes.oneOfType([PropTypes.func, PropTypes.object]),
     label: PropTypes.oneOfType([PropTypes.func, PropTypes.object]),
     root: PropTypes.oneOfType([PropTypes.func, PropTypes.object]),
+    startAdornment: PropTypes.oneOfType([PropTypes.func, PropTypes.object]),
   }),
   /**
    * The components used for each slot inside.
    * @default {}
    */
   slots: PropTypes.shape({
+    endAdornment: PropTypes.elementType,
     label: PropTypes.elementType,
     root: PropTypes.elementType,
+    startAdornment: PropTypes.elementType,
   }),
+  /**
+   * Content to render before the label.
+   * Typically an icon or avatar element.
+   * When provided, `avatar` and `icon` are ignored.
+   */
+  startAdornment: PropTypes.node,
   /**
    * The system prop that allows defining system overrides as well as additional CSS styles.
    */

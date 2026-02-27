@@ -57,7 +57,7 @@ describe('<ChipLink />', () => {
       const actionLink = screen.getByRole('link', { name: 'Chip' });
       expect(actionLink).to.have.attribute('aria-labelledby');
 
-      const labelId = actionLink.getAttribute('aria-labelledby');
+      const labelId = actionLink.getAttribute('aria-labelledby')!;
       const label = document.getElementById(labelId);
       expect(label).to.have.text('Chip');
     });

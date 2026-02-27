@@ -16,7 +16,13 @@ describe('<ChipButton />', () => {
     });
 
     it('ignores type passed via slotProps.root in non-delete mode', () => {
-      render(<ChipButton label="Chip" slotProps={{ root: { type: 'submit' } }} />);
+      render(
+        <ChipButton
+          label="Chip"
+          // @ts-expect-error `type` is intentionally not part of root slotProps — it's controlled internally
+          slotProps={{ root: { type: 'submit' } }}
+        />,
+      );
 
       const button = screen.getByRole('button');
       expect(button).to.have.attribute('type', 'button');
@@ -90,7 +96,7 @@ describe('<ChipButton />', () => {
       const actionButton = screen.getByRole('button', { name: 'Chip' });
       expect(actionButton).to.have.attribute('aria-labelledby');
 
-      const labelId = actionButton.getAttribute('aria-labelledby');
+      const labelId = actionButton.getAttribute('aria-labelledby')!;
       const label = document.getElementById(labelId);
       expect(label).to.have.text('Chip');
     });
@@ -189,9 +195,18 @@ describe('<ChipButton />', () => {
         <ChipButton
           label="Chip"
           onDelete={() => {}}
+          // @ts-expect-error `type` is intentionally not part of root slotProps — it's controlled internally
           slotProps={{ root: { type: 'submit' } }}
         />,
       );
+
+      const root = document.querySelector(`.${classes.root}`);
+      expect(root).not.to.have.attribute('type');
+    });
+
+    it('ignores top-level type prop in delete mode', () => {
+      // @ts-expect-error `type` is Omit'd from ChipButtonProps — testing runtime guard for JS callers
+      render(<ChipButton label="Chip" onDelete={() => {}} type="submit" />);
 
       const root = document.querySelector(`.${classes.root}`);
       expect(root).not.to.have.attribute('type');

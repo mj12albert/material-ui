@@ -2,6 +2,8 @@
 import * as React from 'react';
 import PropTypes from 'prop-types';
 import clsx from 'clsx';
+import { OverridableStringUnion } from '@mui/types';
+import { SxProps } from '@mui/system';
 import composeClasses from '@mui/utils/composeClasses';
 import isFocusVisible from '@mui/utils/isFocusVisible';
 import CancelIcon from '../internal/svg-icons/Cancel';
@@ -10,9 +12,10 @@ import capitalize from '../utils/capitalize';
 import { styled } from '../zero-styled';
 import memoTheme from '../utils/memoTheme';
 import { useDefaultProps } from '../DefaultPropsProvider';
-import chipButtonClasses, { getChipButtonUtilityClass } from './chipButtonClasses';
+import chipLinkClasses, { getChipLinkUtilityClass, ChipLinkClasses } from './chipLinkClasses';
 import useSlot from '../utils/useSlot';
-import useFocusableWhenDisabled from '../utils/useFocusableWhenDisabled';
+import { CreateSlotsAndSlotProps, SlotProps } from '../utils/types';
+import { Theme } from '../styles';
 import {
   getChipRootStyles,
   getChipActionStyles,
@@ -21,95 +24,277 @@ import {
   getChipIconStyles,
 } from '../Chip/chipSharedStyles';
 
-const useUtilityClasses = (ownerState) => {
-  const { classes, disabled, size, color, variant, hasDelete, focusVisible } = ownerState;
+// ---- Type definitions ----
+
+export interface ChipLinkSlots {
+  /**
+   * The component that renders the root.
+   * @default div
+   */
+  root: React.ElementType;
+  /**
+   * The component that renders the action overlay (present only when onDelete is provided).
+   * @default a
+   */
+  action: React.ElementType;
+  /**
+   * The component that renders the label.
+   * @default span
+   */
+  label: React.ElementType;
+  /**
+   * The component that renders the delete button.
+   * @default button
+   */
+  deleteButton: React.ElementType;
+  /**
+   * The component that renders the icon wrapper.
+   * @default span
+   */
+  icon: React.ElementType;
+}
+
+export type ChipLinkSlotsAndSlotProps = CreateSlotsAndSlotProps<
+  ChipLinkSlots,
+  {
+    /**
+     * Props forwarded to the root slot.
+     * By default, the available props are based on the div element.
+     */
+    root: SlotProps<'div', {}, ChipLinkOwnerState>;
+    /**
+     * Props forwarded to the action slot.
+     * By default, the available props are based on the anchor element.
+     */
+    action: SlotProps<'a', {}, ChipLinkOwnerState>;
+    /**
+     * Props forwarded to the label slot.
+     * By default, the available props are based on the span element.
+     */
+    label: SlotProps<'span', {}, ChipLinkOwnerState>;
+    /**
+     * Props forwarded to the deleteButton slot.
+     * By default, the available props are based on the button element.
+     */
+    deleteButton: SlotProps<'button', {}, ChipLinkOwnerState>;
+    /**
+     * Props forwarded to the icon slot.
+     * By default, the available props are based on the span element.
+     */
+    icon: SlotProps<'span', {}, ChipLinkOwnerState>;
+  }
+>;
+
+export interface ChipLinkOwnerState extends Omit<ChipLinkProps, 'slots' | 'slotProps'> {
+  disabled: false;
+  hasDelete: boolean;
+  interactive: boolean;
+  focusVisible: boolean;
+  iconColor: string;
+}
+
+export interface ChipLinkPropsVariantOverrides {}
+
+export interface ChipLinkPropsSizeOverrides {}
+
+export interface ChipLinkPropsColorOverrides {}
+
+export interface ChipLinkOwnProps extends ChipLinkSlotsAndSlotProps {
+  /**
+   * The Avatar element to display.
+   */
+  avatar?: React.ReactElement<unknown> | undefined;
+  /**
+   * Override or extend the styles applied to the component.
+   */
+  classes?: Partial<ChipLinkClasses> | undefined;
+  /**
+   * The color of the component.
+   * It supports both default and custom theme colors, which can be added as shown in the
+   * [palette customization guide](https://mui.com/material-ui/customization/palette/#custom-colors).
+   * @default 'default'
+   */
+  color?:
+    | OverridableStringUnion<
+        'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning',
+        ChipLinkPropsColorOverrides
+      >
+    | undefined;
+  /**
+   * Override the default delete icon element. Shown only if `onDelete` is set.
+   */
+  deleteIcon?: React.ReactElement<unknown> | undefined;
+  /**
+   * The accessible label for the delete button.
+   * @default 'Remove'
+   */
+  deleteLabel?: string | undefined;
+  /**
+   * The URL to link to.
+   */
+  href: string;
+  /**
+   * Icon element.
+   */
+  icon?: React.ReactElement<unknown> | undefined;
+  /**
+   * The content of the component.
+   */
+  label?: React.ReactNode;
+  /**
+   * Callback fired when the delete icon is clicked.
+   * If set, the delete icon will be shown.
+   */
+  onDelete?: React.EventHandler<React.SyntheticEvent> | undefined;
+  /**
+   * @ignore
+   */
+  onClick?: React.MouseEventHandler<HTMLElement> | undefined;
+  /**
+   * @ignore
+   */
+  onFocus?: React.FocusEventHandler<HTMLElement> | undefined;
+  /**
+   * @ignore
+   */
+  onBlur?: React.FocusEventHandler<HTMLElement> | undefined;
+  /**
+   * @ignore
+   */
+  onKeyDown?: React.KeyboardEventHandler<HTMLElement> | undefined;
+  /**
+   * @ignore
+   */
+  onKeyUp?: React.KeyboardEventHandler<HTMLElement> | undefined;
+  /**
+   * The size of the component.
+   * @default 'medium'
+   */
+  size?: OverridableStringUnion<'small' | 'medium', ChipLinkPropsSizeOverrides> | undefined;
+  /**
+   * The system prop that allows defining system overrides as well as additional CSS styles.
+   */
+  sx?: SxProps<Theme> | undefined;
+  /**
+   * The variant to use.
+   * @default 'filled'
+   */
+  variant?:
+    | OverridableStringUnion<'filled' | 'outlined', ChipLinkPropsVariantOverrides>
+    | undefined;
+}
+
+export type ChipLinkProps = ChipLinkOwnProps &
+  Omit<
+    React.ComponentPropsWithoutRef<'a'>,
+    'children' | 'color' | 'href' | 'onClick' | 'onFocus' | 'onBlur' | 'onKeyDown' | 'onKeyUp'
+  >;
+
+// ---- Utility classes ----
+
+const useUtilityClasses = (ownerState: ChipLinkOwnerState) => {
+  const { classes, size, color, variant, focusVisible } = ownerState;
 
   const slots = {
     root: [
       'root',
       variant,
-      disabled && 'disabled',
       focusVisible && 'focusVisible',
-      `size${capitalize(size)}`,
-      `color${capitalize(color)}`,
+      `size${capitalize(size!)}`,
+      `color${capitalize(color!)}`,
     ],
     action: ['action', focusVisible && 'focusVisible'],
     label: ['label'],
     icon: ['icon'],
-    deleteButton: hasDelete && ['deleteButton'],
+    deleteButton: ['deleteButton'],
   };
 
-  return composeClasses(slots, getChipButtonUtilityClass, classes);
+  return composeClasses(slots, getChipLinkUtilityClass, classes);
 };
 
-const ChipButtonRoot = styled('div', {
-  name: 'MuiChipButton',
+// ---- Styled components ----
+
+const ChipLinkRoot = styled('div', {
+  name: 'MuiChipLink',
   slot: 'Root',
   overridesResolver: (props, styles) => {
     const { ownerState } = props;
-    const { color, size, variant, disabled } = ownerState;
+    const { color, size, variant } = ownerState;
 
     return [
       styles.root,
       styles[`size${capitalize(size)}`],
       styles[`color${capitalize(color)}`],
       styles[variant],
-      disabled && styles.disabled,
     ];
   },
 })(
   memoTheme(({ theme }) =>
     getChipRootStyles(theme, {
-      focusVisible: chipButtonClasses.focusVisible,
-      disabled: chipButtonClasses.disabled,
+      focusVisible: chipLinkClasses.focusVisible,
     }),
   ),
 );
 
-const ChipButtonAction = styled('button', {
-  name: 'MuiChipButton',
+const ChipLinkAction = styled('a', {
+  name: 'MuiChipLink',
   slot: 'Action',
   overridesResolver: (props, styles) => styles.action,
-})(memoTheme(({ theme }) => getChipActionStyles(theme, chipButtonClasses.focusVisible)));
+})(memoTheme(({ theme }) => getChipActionStyles(theme, chipLinkClasses.focusVisible)));
 
-const ChipButtonLabel = styled('span', {
-  name: 'MuiChipButton',
+const ChipLinkLabel = styled('span', {
+  name: 'MuiChipLink',
   slot: 'Label',
   overridesResolver: (props, styles) => styles.label,
 })(getChipLabelStyles());
 
-const ChipButtonDeleteButton = styled('button', {
-  name: 'MuiChipButton',
+const ChipLinkDeleteButton = styled('button', {
+  name: 'MuiChipLink',
   slot: 'DeleteButton',
   overridesResolver: (props, styles) => styles.deleteButton,
 })(memoTheme(({ theme }) => getChipDeleteStyles(theme)));
 
-const ChipButtonIcon = styled('span', {
-  name: 'MuiChipButton',
+const ChipLinkIcon = styled('span', {
+  name: 'MuiChipLink',
   slot: 'Icon',
   overridesResolver: (props, styles) => styles.icon,
 })(memoTheme(({ theme }) => getChipIconStyles(theme)));
 
-function isDeleteKeyboardEvent(event) {
+// ---- Helpers ----
+
+function isDeleteKeyboardEvent(event: React.KeyboardEvent) {
   return event.key === 'Backspace' || event.key === 'Delete';
 }
 
+// ---- Component ----
+
 /**
- * A chip component with button semantics.
+ * A chip component with link semantics.
  *
- * - Without `onDelete`: root IS a `<button>` (1 tab stop)
- * - With `onDelete`: root is a `<div>` with an action `<button>` overlay + delete `<button>` (2 tab stops)
+ * - Without `onDelete`: root IS an `<a>` (1 tab stop)
+ * - With `onDelete`: root is a `<div>` with an action `<a>` overlay + delete `<button>` (2 tab stops)
+ *
+ * ChipLink cannot be disabled. Disabled links are a bad pattern — there is no
+ * native disabled state for `<a>` elements. If a link destination is unavailable,
+ * remove the ChipLink from the DOM or replace it with a disabled ChipButton.
+ *
+ * Demos:
+ *
+ * - [Chip](https://next.mui.com/material-ui/react-chip/)
+ *
+ * API:
+ *
+ * - [ChipLink API](https://next.mui.com/material-ui/api/chip-link/)
  */
-const ChipButton = React.forwardRef(function ChipButton(inProps, ref) {
-  const props = useDefaultProps({ props: inProps, name: 'MuiChipButton' });
+const ChipLink = React.forwardRef<HTMLDivElement, ChipLinkProps>(function ChipLink(inProps, ref) {
+  const props = useDefaultProps({ props: inProps, name: 'MuiChipLink' });
   const {
     avatar: avatarProp,
     className,
     color = 'default',
     deleteIcon: deleteIconProp,
     deleteLabel = 'Remove',
-    disabled = false,
-    focusableWhenDisabled = true,
+    href,
     icon: iconProp,
     label,
     onClick,
@@ -119,15 +304,13 @@ const ChipButton = React.forwardRef(function ChipButton(inProps, ref) {
     onKeyDown,
     onKeyUp,
     size = 'medium',
-    // type is intentionally ignored — root always renders type="button".
-    type: unusedType,
     variant = 'filled',
     slots = {},
     slotProps = {},
     ...other
   } = props;
 
-  const chipRef = React.useRef(null);
+  const chipRef = React.useRef<HTMLDivElement>(null);
   const handleRef = useForkRef(chipRef, ref);
 
   const labelId = React.useId();
@@ -136,59 +319,33 @@ const ChipButton = React.forwardRef(function ChipButton(inProps, ref) {
 
   // Focus-visible tracking
   const [focusVisibleState, setFocusVisibleState] = React.useState(false);
-  // Only clear focus-visible when the element becomes truly unfocusable.
-  // When focusableWhenDisabled is true, the chip is still keyboard-reachable
-  // and must show focus-visible so users can see where focus is.
-  if (disabled && !focusableWhenDisabled && focusVisibleState) {
-    setFocusVisibleState(false);
-  }
 
-  const handleFocus = (event) => {
+  const handleFocus = (event: React.FocusEvent<HTMLElement>) => {
     if (isFocusVisible(event.target)) {
       setFocusVisibleState(true);
     }
-    if (onFocus) {
-      onFocus(event);
-    }
+    onFocus?.(event);
   };
 
-  const handleBlur = (event) => {
+  const handleBlur = (event: React.FocusEvent<HTMLElement>) => {
     if (focusVisibleState) {
       setFocusVisibleState(false);
     }
-    if (onBlur) {
-      onBlur(event);
-    }
+    onBlur?.(event);
   };
 
-  // Focusable-when-disabled for the primary interactive element
-  const { props: focusableProps } = useFocusableWhenDisabled({
-    focusableWhenDisabled,
-    disabled,
-    isNativeButton: true,
-    tabIndex: other.tabIndex ?? 0,
-  });
-  const { onKeyDown: focusableOnKeyDown, ...focusableRestProps } = focusableProps;
-
-  // Focusable-when-disabled for the delete button
-  const { props: deleteFocusableProps } = useFocusableWhenDisabled({
-    focusableWhenDisabled,
-    disabled,
-    isNativeButton: true,
-  });
-  const { onKeyDown: deleteFocusableOnKeyDown, ...deleteFocusableRestProps } =
-    deleteFocusableProps;
-
-  const ownerState = {
+  const ownerState: ChipLinkOwnerState = {
     ...props,
     color,
     variant,
     size,
-    disabled,
+    disabled: false,
     hasDelete,
     interactive: !hasDelete,
     focusVisible: focusVisibleState,
-    iconColor: React.isValidElement(iconProp) ? iconProp.props.color || color : color,
+    iconColor: React.isValidElement(iconProp)
+      ? ((iconProp.props as Record<string, unknown>).color as string) || color
+      : color,
   };
 
   const classes = useUtilityClasses(ownerState);
@@ -196,7 +353,7 @@ const ChipButton = React.forwardRef(function ChipButton(inProps, ref) {
   if (process.env.NODE_ENV !== 'production') {
     if (avatarProp && iconProp) {
       console.error(
-        'MUI: The ChipButton component can not handle the avatar ' +
+        'MUI: The ChipLink component can not handle the avatar ' +
           'and the icon prop at the same time. Pick one.',
       );
     }
@@ -204,57 +361,47 @@ const ChipButton = React.forwardRef(function ChipButton(inProps, ref) {
 
   const externalForwardedProps = { slots, slotProps };
 
-  // Strip `type` from slotProps.root — the root element's type is controlled
-  // internally (type="button" in non-delete mode, no type on div in delete mode).
-  const { type: rootSlotType, ...rootSlotPropsWithoutType } =
-    (typeof slotProps.root === 'function' ? slotProps.root(ownerState) : slotProps.root) || {};
-  const rootExternalForwardedProps = {
-    slots,
-    slotProps: { ...slotProps, root: rootSlotPropsWithoutType },
-  };
-
   // -- Slot: Root --
   // Top-level rest props always land on root for consistent behavior in both modes.
   // Use slotProps.action / slotProps.deleteButton for sub-control customization.
   const [RootSlot, rootProps] = useSlot('root', {
-    elementType: ChipButtonRoot,
+    elementType: ChipLinkRoot,
     externalForwardedProps: {
-      ...rootExternalForwardedProps,
+      ...externalForwardedProps,
       ...other,
     },
     ownerState,
     ref: handleRef,
     className: clsx(classes.root, className),
     additionalProps: {
-      ...(!hasDelete && focusableRestProps),
+      ...(!hasDelete && { href }),
     },
-    getSlotProps: (handlers) => ({
+    getSlotProps: (handlers: Record<string, React.EventHandler<any>>) => ({
       ...handlers,
       ...(!hasDelete && {
-        onClick: (event) => {
+        onClick: (event: React.MouseEvent<HTMLElement>) => {
           handlers.onClick?.(event);
           onClick?.(event);
         },
-        onFocus: (event) => {
+        onFocus: (event: React.FocusEvent<HTMLElement>) => {
           handlers.onFocus?.(event);
           handleFocus(event);
         },
-        onBlur: (event) => {
+        onBlur: (event: React.FocusEvent<HTMLElement>) => {
           handlers.onBlur?.(event);
           handleBlur(event);
         },
-        onKeyDown: (event) => {
+        onKeyDown: (event: React.KeyboardEvent<HTMLElement>) => {
           handlers.onKeyDown?.(event);
-          focusableOnKeyDown?.(event);
           onKeyDown?.(event);
-          if (!disabled && onDelete && isDeleteKeyboardEvent(event)) {
+          if (onDelete && isDeleteKeyboardEvent(event)) {
             event.preventDefault();
           }
         },
-        onKeyUp: (event) => {
+        onKeyUp: (event: React.KeyboardEvent<HTMLElement>) => {
           handlers.onKeyUp?.(event);
           onKeyUp?.(event);
-          if (!disabled && onDelete && isDeleteKeyboardEvent(event)) {
+          if (onDelete && isDeleteKeyboardEvent(event)) {
             onDelete(event);
           }
         },
@@ -264,44 +411,42 @@ const ChipButton = React.forwardRef(function ChipButton(inProps, ref) {
 
   // -- Slot: Action (only in overlay mode) --
   // Receives only explicit interactive props. Element-specific attributes
-  // (e.g. name, value, formAction) should be set via slotProps.action.
+  // (e.g. target, rel, download) should be set via slotProps.action.
   const [ActionSlot, actionSlotProps] = useSlot('action', {
-    elementType: ChipButtonAction,
+    elementType: ChipLinkAction,
     externalForwardedProps,
     ownerState,
     className: classes.action,
     additionalProps: {
-      ...focusableRestProps,
+      href,
       'aria-labelledby': labelId,
-      type: 'button',
     },
-    getSlotProps: (handlers) => ({
+    getSlotProps: (handlers: Record<string, React.EventHandler<any>>) => ({
       ...handlers,
-      onClick: (event) => {
+      onClick: (event: React.MouseEvent<HTMLElement>) => {
         handlers.onClick?.(event);
         onClick?.(event);
       },
-      onFocus: (event) => {
+      onFocus: (event: React.FocusEvent<HTMLElement>) => {
         handlers.onFocus?.(event);
         handleFocus(event);
       },
-      onBlur: (event) => {
+      onBlur: (event: React.FocusEvent<HTMLElement>) => {
         handlers.onBlur?.(event);
         handleBlur(event);
       },
-      onKeyDown: (event) => {
+      onKeyDown: (event: React.KeyboardEvent<HTMLElement>) => {
         handlers.onKeyDown?.(event);
-        focusableOnKeyDown?.(event);
         onKeyDown?.(event);
-        if (!disabled && isDeleteKeyboardEvent(event)) {
+        if (isDeleteKeyboardEvent(event)) {
           event.preventDefault();
         }
       },
-      onKeyUp: (event) => {
+      onKeyUp: (event: React.KeyboardEvent<HTMLElement>) => {
         handlers.onKeyUp?.(event);
         onKeyUp?.(event);
-        if (!disabled && isDeleteKeyboardEvent(event)) {
-          onDelete(event);
+        if (isDeleteKeyboardEvent(event)) {
+          onDelete!(event);
         }
       },
     }),
@@ -309,49 +454,42 @@ const ChipButton = React.forwardRef(function ChipButton(inProps, ref) {
 
   // -- Slot: Label --
   const [LabelSlot, labelSlotProps] = useSlot('label', {
-    elementType: ChipButtonLabel,
+    elementType: ChipLinkLabel,
     externalForwardedProps,
     ownerState,
     className: classes.label,
     additionalProps: {
-      ...(hasDelete && { id: labelId, style: { pointerEvents: 'none' } }),
+      ...(hasDelete && { id: labelId, style: { pointerEvents: 'none' as const } }),
     },
   });
 
   // -- Slot: DeleteButton --
   const [DeleteButtonSlot, deleteButtonSlotProps] = useSlot('deleteButton', {
-    elementType: ChipButtonDeleteButton,
+    elementType: ChipLinkDeleteButton,
     externalForwardedProps,
     ownerState,
     className: classes.deleteButton,
     additionalProps: {
-      ...deleteFocusableRestProps,
       'aria-label': deleteLabel,
-      type: 'button',
+      type: 'button' as const,
     },
-    getSlotProps: (handlers) => ({
+    getSlotProps: (handlers: Record<string, React.EventHandler<any>>) => ({
       ...handlers,
-      onClick: (event) => {
+      onClick: (event: React.MouseEvent<HTMLElement>) => {
         handlers.onClick?.(event);
         event.stopPropagation();
-        if (!disabled) {
-          onDelete?.(event);
-        }
-      },
-      onKeyDown: (event) => {
-        handlers.onKeyDown?.(event);
-        deleteFocusableOnKeyDown?.(event);
+        onDelete?.(event);
       },
     }),
   });
 
   // -- Slot: Icon --
   const [IconSlot, iconSlotProps] = useSlot('icon', {
-    elementType: ChipButtonIcon,
+    elementType: ChipLinkIcon,
     externalForwardedProps,
     ownerState,
     className: classes.icon,
-    additionalProps: { 'aria-hidden': true },
+    additionalProps: { 'aria-hidden': true as const },
   });
 
   const iconNode = iconElement ? <IconSlot {...iconSlotProps}>{iconElement}</IconSlot> : null;
@@ -362,12 +500,10 @@ const ChipButton = React.forwardRef(function ChipButton(inProps, ref) {
     </DeleteButtonSlot>
   ) : null;
 
-  // -- Mode 1: Without onDelete — root IS the <button> --
-  // type="button" is placed after the spread so it can never be overridden
-  // by slotProps.root or other external sources.
+  // -- Mode 1: Without onDelete — root IS the <a> --
   if (!hasDelete) {
     return (
-      <RootSlot as="button" {...rootProps} type="button">
+      <RootSlot as="a" {...rootProps}>
         {iconNode}
         <LabelSlot {...labelSlotProps}>{label}</LabelSlot>
       </RootSlot>
@@ -385,10 +521,10 @@ const ChipButton = React.forwardRef(function ChipButton(inProps, ref) {
   );
 });
 
-ChipButton.propTypes /* remove-proptypes */ = {
+ChipLink.propTypes /* remove-proptypes */ = {
   // ┌────────────────────────────── Warning ──────────────────────────────┐
   // │ These PropTypes are generated from the TypeScript type definitions. │
-  // │    To update them, edit the d.ts file and run `pnpm proptypes`.    │
+  // │ To update them, edit the TypeScript types and run `pnpm proptypes`. │
   // └─────────────────────────────────────────────────────────────────────┘
   /**
    * The Avatar element to display.
@@ -422,15 +558,9 @@ ChipButton.propTypes /* remove-proptypes */ = {
    */
   deleteLabel: PropTypes.string,
   /**
-   * If `true`, the component is disabled.
-   * @default false
+   * The URL to link to.
    */
-  disabled: PropTypes.bool,
-  /**
-   * If `true`, the disabled chip can receive focus.
-   * @default true
-   */
-  focusableWhenDisabled: PropTypes.bool,
+  href: PropTypes.string.isRequired,
   /**
    * Icon element.
    */
@@ -503,15 +633,6 @@ ChipButton.propTypes /* remove-proptypes */ = {
     PropTypes.object,
   ]),
   /**
-   * @ignore
-   */
-  tabIndex: PropTypes.number,
-  /**
-   * Ignored. The root element always renders `type="button"`.
-   * Use `slotProps.action` to customise the action element's type in overlay mode.
-   */
-  type: PropTypes.string,
-  /**
    * The variant to use.
    * @default 'filled'
    */
@@ -519,6 +640,6 @@ ChipButton.propTypes /* remove-proptypes */ = {
     PropTypes.oneOf(['filled', 'outlined']),
     PropTypes.string,
   ]),
-};
+} as any;
 
-export default ChipButton;
+export default ChipLink;

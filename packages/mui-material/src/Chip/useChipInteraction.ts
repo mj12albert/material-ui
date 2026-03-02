@@ -4,10 +4,10 @@ import isFocusVisible from '@mui/utils/isFocusVisible';
 import useLazyRipple from '../useLazyRipple';
 
 interface UseChipInteractionOptions {
-  disabled?: (boolean) | undefined;
-  focusableWhenDisabled?: (boolean) | undefined;
-  onFocus?: (React.FocusEventHandler<HTMLElement>) | undefined;
-  onBlur?: (React.FocusEventHandler<HTMLElement>) | undefined;
+  disabled?: boolean | undefined;
+  focusableWhenDisabled?: boolean | undefined;
+  onFocus?: React.FocusEventHandler<HTMLElement> | undefined;
+  onBlur?: React.FocusEventHandler<HTMLElement> | undefined;
 }
 
 export default function useChipInteraction(options: UseChipInteractionOptions) {

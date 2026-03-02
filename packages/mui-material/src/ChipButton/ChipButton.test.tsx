@@ -38,11 +38,7 @@ describe('<ChipButton />', () => {
 
     it('allows slotProps.action to customize action type', () => {
       render(
-        <ChipButton
-          label="Chip"
-          onDelete={() => {}}
-          slotProps={{ action: { type: 'submit' } }}
-        />,
+        <ChipButton label="Chip" onDelete={() => {}} slotProps={{ action: { type: 'submit' } }} />,
       );
 
       const actionButton = screen.getByRole('button', { name: 'Chip' });

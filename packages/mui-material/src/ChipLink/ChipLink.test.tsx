@@ -64,9 +64,7 @@ describe('<ChipLink />', () => {
     });
 
     it('renders delete button with aria-label', () => {
-      render(
-        <ChipLink label="Chip" href="#" onDelete={() => {}} deleteLabel="Remove chip" />,
-      );
+      render(<ChipLink label="Chip" href="#" onDelete={() => {}} deleteLabel="Remove chip" />);
 
       expect(screen.getByRole('button', { name: 'Remove chip' })).not.to.equal(null);
     });
@@ -108,9 +106,7 @@ describe('<ChipLink />', () => {
 
     it('composes onKeyDown on the action link', () => {
       const handleKeyDown = spy();
-      render(
-        <ChipLink label="Chip" href="#" onKeyDown={handleKeyDown} onDelete={() => {}} />,
-      );
+      render(<ChipLink label="Chip" href="#" onKeyDown={handleKeyDown} onDelete={() => {}} />);
 
       const actionLink = screen.getByRole('link', { name: 'Chip' });
       act(() => {
@@ -147,9 +143,7 @@ describe('<ChipLink />', () => {
     it('does not produce ripple anywhere when delete button is clicked', () => {
       const handleClick = spy();
       const handleDelete = spy();
-      render(
-        <ChipLink label="Chip" href="#" onClick={handleClick} onDelete={handleDelete} />,
-      );
+      render(<ChipLink label="Chip" href="#" onClick={handleClick} onDelete={handleDelete} />);
 
       const deleteButton = screen.getByRole('button', { name: 'Remove' });
       fireEvent.mouseDown(deleteButton);

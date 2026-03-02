@@ -145,9 +145,7 @@ export function getChipRootStyles(theme: Theme, classes: ChipRootClassRefs) {
           border: theme.vars
             ? `1px solid ${theme.vars.palette.Chip.defaultBorder}`
             : `1px solid ${
-                theme.palette.mode === 'light'
-                  ? theme.palette.grey[400]
-                  : theme.palette.grey[700]
+                theme.palette.mode === 'light' ? theme.palette.grey[400] : theme.palette.grey[700]
               }`,
           [`&.${classes.focusVisible}`]: {
             backgroundColor: (theme.vars || theme).palette.action.focus,

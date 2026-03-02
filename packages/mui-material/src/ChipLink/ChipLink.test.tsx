@@ -3,6 +3,7 @@ import { expect } from 'chai';
 import { spy } from 'sinon';
 import { act, createRenderer, fireEvent, screen } from '@mui/internal-test-utils';
 import ChipLink, { chipLinkClasses as classes } from '@mui/material/ChipLink';
+import * as rippleTest from '../../test/ripple';
 
 describe('<ChipLink />', () => {
   const { render } = createRenderer();
@@ -117,6 +118,47 @@ describe('<ChipLink />', () => {
       });
       fireEvent.keyDown(actionLink, { key: 'Enter' });
       expect(handleKeyDown.callCount).to.equal(1);
+    });
+  });
+
+  describe('ripple', () => {
+    const RIPPLE_CLASS = '.MuiTouchRipple-root';
+
+    it('mounts TouchRipple inside root link after mouseDown in non-overlay mode', async () => {
+      render(<ChipLink label="Chip" href="#" />);
+
+      const link = screen.getByRole('link');
+      expect(link.querySelector(RIPPLE_CLASS)).to.equal(null);
+
+      await rippleTest.startTouch(link);
+      expect(link.querySelector(RIPPLE_CLASS)).not.to.equal(null);
+    });
+
+    it('mounts TouchRipple inside action link after mouseDown in overlay mode', async () => {
+      render(<ChipLink label="Chip" href="#" onDelete={() => {}} />);
+
+      const actionLink = screen.getByRole('link', { name: 'Chip' });
+      expect(actionLink.querySelector(RIPPLE_CLASS)).to.equal(null);
+
+      await rippleTest.startTouch(actionLink);
+      expect(actionLink.querySelector(RIPPLE_CLASS)).not.to.equal(null);
+    });
+
+    it('does not produce ripple anywhere when delete button is clicked', () => {
+      const handleClick = spy();
+      const handleDelete = spy();
+      render(
+        <ChipLink label="Chip" href="#" onClick={handleClick} onDelete={handleDelete} />,
+      );
+
+      const deleteButton = screen.getByRole('button', { name: 'Remove' });
+      fireEvent.mouseDown(deleteButton);
+      fireEvent.click(deleteButton);
+
+      const root = document.querySelector(`.${classes.root}`)!;
+      expect(root.querySelector(RIPPLE_CLASS)).to.equal(null);
+      expect(handleDelete.callCount).to.equal(1);
+      expect(handleClick.callCount).to.equal(0);
     });
   });
 

@@ -3,7 +3,6 @@ import * as React from 'react';
 import PropTypes from 'prop-types';
 import clsx from 'clsx';
 import composeClasses from '@mui/utils/composeClasses';
-import isFocusVisible from '@mui/utils/isFocusVisible';
 import CancelIcon from '../internal/svg-icons/Cancel';
 import useForkRef from '../utils/useForkRef';
 import capitalize from '../utils/capitalize';
@@ -12,6 +11,8 @@ import memoTheme from '../utils/memoTheme';
 import { useDefaultProps } from '../DefaultPropsProvider';
 import chipLinkClasses, { getChipLinkUtilityClass } from './chipLinkClasses';
 import useSlot from '../utils/useSlot';
+import { TouchRippleComponent, isDeleteKeyboardEvent } from '../Chip/utils';
+import useChipInteraction from '../Chip/useChipInteraction';
 import type { ChipLinkOwnerState, ChipLinkProps } from './ChipLink.types';
 import {
   getChipRootStyles,
@@ -101,12 +102,6 @@ const ChipLinkIcon = styled('span', {
   overridesResolver: (props, styles) => styles.icon,
 })(memoTheme(({ theme }) => getChipIconStyles(theme)));
 
-// ---- Helpers ----
-
-function isDeleteKeyboardEvent(event: React.KeyboardEvent) {
-  return event.key === 'Backspace' || event.key === 'Delete';
-}
-
 // ---- Component ----
 
 /**
@@ -158,22 +153,14 @@ const ChipLink = React.forwardRef<HTMLDivElement, ChipLinkProps>(function ChipLi
   const hasDelete = Boolean(onDelete);
   const iconElement = avatarProp || iconProp;
 
-  // Focus-visible tracking
-  const [focusVisibleState, setFocusVisibleState] = React.useState(false);
-
-  const handleFocus = (event: React.FocusEvent<HTMLElement>) => {
-    if (isFocusVisible(event.target)) {
-      setFocusVisibleState(true);
-    }
-    onFocus?.(event);
-  };
-
-  const handleBlur = (event: React.FocusEvent<HTMLElement>) => {
-    if (focusVisibleState) {
-      setFocusVisibleState(false);
-    }
-    onBlur?.(event);
-  };
+  const {
+    focusVisibleState,
+    handleFocus,
+    handleBlur,
+    getRippleHandlers,
+    enableTouchRipple,
+    touchRippleRef,
+  } = useChipInteraction({ onFocus, onBlur });
 
   const ownerState: ChipLinkOwnerState = {
     ...props,
@@ -217,9 +204,10 @@ const ChipLink = React.forwardRef<HTMLDivElement, ChipLinkProps>(function ChipLi
     additionalProps: {
       ...(!hasDelete && { href }),
     },
-    getSlotProps: (handlers: Record<string, React.EventHandler<any>>) => ({
+    getSlotProps: (handlers: Record<string, React.EventHandler<React.SyntheticEvent>>) => ({
       ...handlers,
       ...(!hasDelete && {
+        ...getRippleHandlers(handlers),
         onClick: (event: React.MouseEvent<HTMLElement>) => {
           handlers.onClick?.(event);
           onClick?.(event);
@@ -262,8 +250,9 @@ const ChipLink = React.forwardRef<HTMLDivElement, ChipLinkProps>(function ChipLi
       href,
       'aria-labelledby': labelId,
     },
-    getSlotProps: (handlers: Record<string, React.EventHandler<any>>) => ({
+    getSlotProps: (handlers: Record<string, React.EventHandler<React.SyntheticEvent>>) => ({
       ...handlers,
+      ...getRippleHandlers(handlers),
       onClick: (event: React.MouseEvent<HTMLElement>) => {
         handlers.onClick?.(event);
         onClick?.(event);
@@ -314,7 +303,7 @@ const ChipLink = React.forwardRef<HTMLDivElement, ChipLinkProps>(function ChipLi
       'aria-label': deleteLabel,
       type: 'button' as const,
     },
-    getSlotProps: (handlers: Record<string, React.EventHandler<any>>) => ({
+    getSlotProps: (handlers: Record<string, React.EventHandler<React.SyntheticEvent>>) => ({
       ...handlers,
       onClick: (event: React.MouseEvent<HTMLElement>) => {
         handlers.onClick?.(event);
@@ -335,6 +324,8 @@ const ChipLink = React.forwardRef<HTMLDivElement, ChipLinkProps>(function ChipLi
 
   const iconNode = iconElement ? <IconSlot {...iconSlotProps}>{iconElement}</IconSlot> : null;
 
+  const touchRippleNode = enableTouchRipple ? <TouchRippleComponent ref={touchRippleRef} /> : null;
+
   const deleteNode = onDelete ? (
     <DeleteButtonSlot {...deleteButtonSlotProps}>
       {deleteIconProp || <CancelIcon fontSize="inherit" />}
@@ -347,6 +338,7 @@ const ChipLink = React.forwardRef<HTMLDivElement, ChipLinkProps>(function ChipLi
       <RootSlot as="a" {...rootProps}>
         {iconNode}
         <LabelSlot {...labelSlotProps}>{label}</LabelSlot>
+        {touchRippleNode}
       </RootSlot>
     );
   }
@@ -354,7 +346,7 @@ const ChipLink = React.forwardRef<HTMLDivElement, ChipLinkProps>(function ChipLi
   // -- Mode 2: With onDelete — overlay pattern --
   return (
     <RootSlot {...rootProps}>
-      <ActionSlot {...actionSlotProps} />
+      <ActionSlot {...actionSlotProps}>{touchRippleNode}</ActionSlot>
       {iconNode}
       <LabelSlot {...labelSlotProps}>{label}</LabelSlot>
       {deleteNode}

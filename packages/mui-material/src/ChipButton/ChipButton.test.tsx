@@ -3,6 +3,7 @@ import { expect } from 'chai';
 import { spy } from 'sinon';
 import { act, createRenderer, fireEvent, screen } from '@mui/internal-test-utils';
 import ChipButton, { chipButtonClasses as classes } from '@mui/material/ChipButton';
+import * as ripple from '../../test/ripple';
 
 describe('<ChipButton />', () => {
   const { render } = createRenderer();
@@ -186,6 +187,53 @@ describe('<ChipButton />', () => {
       fireEvent.keyDown(actionButton, { key: 'Delete' });
       fireEvent.keyUp(actionButton, { key: 'Delete' });
       expect(handleDelete.callCount).to.equal(0);
+    });
+  });
+
+  describe('ripple', () => {
+    const RIPPLE_CLASS = '.MuiTouchRipple-root';
+
+    it('mounts TouchRipple inside root button after mouseDown in non-overlay mode', async () => {
+      render(<ChipButton label="Chip" />);
+
+      const button = screen.getByRole('button');
+      expect(button.querySelector(RIPPLE_CLASS)).to.equal(null);
+
+      await ripple.startTouch(button);
+      expect(button.querySelector(RIPPLE_CLASS)).not.to.equal(null);
+    });
+
+    it('mounts TouchRipple inside action button after mouseDown in overlay mode', async () => {
+      render(<ChipButton label="Chip" onDelete={() => {}} />);
+
+      const actionButton = screen.getByRole('button', { name: 'Chip' });
+      expect(actionButton.querySelector(RIPPLE_CLASS)).to.equal(null);
+
+      await ripple.startTouch(actionButton);
+      expect(actionButton.querySelector(RIPPLE_CLASS)).not.to.equal(null);
+    });
+
+    it('does not produce ripple anywhere when delete button is clicked', () => {
+      const handleClick = spy();
+      const handleDelete = spy();
+      render(<ChipButton label="Chip" onClick={handleClick} onDelete={handleDelete} />);
+
+      const deleteButton = screen.getByRole('button', { name: 'Remove' });
+      fireEvent.mouseDown(deleteButton);
+      fireEvent.click(deleteButton);
+
+      const root = document.querySelector(`.${classes.root}`)!;
+      expect(root.querySelector(RIPPLE_CLASS)).to.equal(null);
+      expect(handleDelete.callCount).to.equal(1);
+      expect(handleClick.callCount).to.equal(0);
+    });
+
+    it('does not mount ripple when disabled', () => {
+      render(<ChipButton label="Chip" disabled />);
+
+      const button = screen.getByRole('button');
+      fireEvent.mouseDown(button);
+      expect(button.querySelector(RIPPLE_CLASS)).to.equal(null);
     });
   });
 

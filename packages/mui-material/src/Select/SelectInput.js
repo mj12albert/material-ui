@@ -6,6 +6,7 @@ import clsx from 'clsx';
 import composeClasses from '@mui/utils/composeClasses';
 import useId from '@mui/utils/useId';
 import refType from '@mui/utils/refType';
+import useEventCallback from '@mui/utils/useEventCallback';
 import ownerDocument from '../utils/ownerDocument';
 import capitalize from '../utils/capitalize';
 import Menu from '../Menu/Menu';
@@ -81,6 +82,22 @@ function isEmpty(display) {
   return display == null || (typeof display === 'string' && !display.trim());
 }
 
+function getOpenInteractionType(event) {
+  if (!event) {
+    return null;
+  }
+
+  if (event.type === 'mousedown' || event.type === 'pointerdown' || event.type === 'touchstart') {
+    return 'pointer';
+  }
+
+  if (event.type === 'keydown' || (event.type === 'click' && event.detail === 0)) {
+    return 'keyboard';
+  }
+
+  return null;
+}
+
 const useUtilityClasses = (ownerState) => {
   const { classes, variant, disabled, multiple, open, error } = ownerState;
 
@@ -150,9 +167,12 @@ const SelectInput = React.forwardRef(function SelectInput(props, ref) {
 
   const inputRef = React.useRef(null);
   const displayRef = React.useRef(null);
+  const listRef = React.useRef(null);
+  const [listElement, setListElement] = React.useState(null);
   const [displayNode, setDisplayNode] = React.useState(null);
   const { current: isOpenControlled } = React.useRef(openProp != null);
   const [menuMinWidthState, setMenuMinWidthState] = React.useState();
+  const [openInteractionType, setOpenInteractionType] = React.useState(null);
 
   const handleRef = useForkRef(ref, inputRefProp);
 
@@ -236,13 +256,49 @@ const SelectInput = React.forwardRef(function SelectInput(props, ref) {
     return undefined;
   }, [labelId]);
 
+  const focusActiveOptionWithoutFocusVisible = useEventCallback((listNode) => {
+    if (openInteractionType !== 'pointer') {
+      return;
+    }
+
+    const activeOption =
+      listNode?.querySelector('[role="option"][tabindex="0"]') ||
+      displayRef.current?.getRootNode()?.querySelector?.('[role="option"][tabindex="0"]');
+
+    if (!activeOption) {
+      return;
+    }
+
+    try {
+      activeOption.focus({
+        preventScroll: true,
+        focusVisible: false,
+      });
+    } catch {
+      activeOption.focus();
+    }
+  });
+
+  React.useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    focusActiveOptionWithoutFocusVisible(listElement);
+  }, [open, listElement, focusActiveOptionWithoutFocusVisible]);
+
   const update = (openParam, event) => {
     if (openParam) {
+      setOpenInteractionType(getOpenInteractionType(event));
+
       if (onOpen) {
         onOpen(event);
       }
-    } else if (onClose) {
-      onClose(event);
+    } else {
+      setOpenInteractionType(null);
+      if (onClose) {
+        onClose(event);
+      }
     }
 
     if (!isOpenControlled) {
@@ -522,6 +578,7 @@ const SelectInput = React.forwardRef(function SelectInput(props, ref) {
       ? MenuProps.slotProps.list(ownerState)
       : MenuProps.slotProps?.list),
   };
+  const handleListRef = useForkRef(listRef, listProps.ref, setListElement);
 
   const listboxId = useId();
 
@@ -591,6 +648,7 @@ const SelectInput = React.forwardRef(function SelectInput(props, ref) {
           horizontal: 'center',
         }}
         {...MenuProps}
+        disableAutoFocusItem={openInteractionType === 'pointer' || MenuProps.disableAutoFocusItem}
         slotProps={{
           ...MenuProps.slotProps,
           list: {
@@ -600,6 +658,7 @@ const SelectInput = React.forwardRef(function SelectInput(props, ref) {
             disableListWrap: true,
             id: listboxId,
             ...listProps,
+            ref: handleListRef,
           },
           paper: {
             ...paperProps,

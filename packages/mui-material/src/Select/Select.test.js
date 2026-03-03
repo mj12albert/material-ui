@@ -1896,6 +1896,51 @@ describe('<Select />', () => {
     expect(event.button).to.equal(0);
   });
 
+  // JSDOM doesn't support :focus-visible
+  it.skipIf(isJsdom())(
+    'should not apply focusVisible class when opened by pointer after keyboard modality',
+    () => {
+      render(
+        <Select value="">
+          <MenuItem value="" focusVisibleClassName="focus-visible">
+            None
+          </MenuItem>
+          <MenuItem value={10}>Ten</MenuItem>
+        </Select>,
+      );
+
+      const trigger = screen.getByRole('combobox');
+      fireEvent.keyDown(document.body, { key: 'Tab' });
+      fireEvent.mouseDown(trigger);
+
+      expect(screen.getByRole('option', { name: 'None' })).not.to.have.class('focus-visible');
+    },
+  );
+
+  // JSDOM doesn't support :focus-visible
+  it.skipIf(isJsdom())(
+    'should apply focusVisible class when opened by keyboard after keyboard modality',
+    async () => {
+      render(
+        <Select value="">
+          <MenuItem value="" focusVisibleClassName="focus-visible">
+            None
+          </MenuItem>
+          <MenuItem value={10}>Ten</MenuItem>
+        </Select>,
+      );
+
+      const trigger = screen.getByRole('combobox');
+      fireEvent.keyDown(document.body, { key: 'Tab' });
+      await act(async () => {
+        trigger.focus();
+      });
+      fireEvent.keyDown(trigger, { key: 'Enter' });
+
+      expect(screen.getByRole('option', { name: 'None' })).to.have.class('focus-visible');
+    },
+  );
+
   describe('keyboard navigation in shadow DOM', () => {
     it.skipIf(isJsdom())('should navigate between options using arrow keys', async function test() {
       // reset fake timers

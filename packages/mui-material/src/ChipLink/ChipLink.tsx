@@ -3,6 +3,7 @@ import * as React from 'react';
 import PropTypes from 'prop-types';
 import clsx from 'clsx';
 import composeClasses from '@mui/utils/composeClasses';
+import useId from '@mui/utils/useId';
 import CancelIcon from '../internal/svg-icons/Cancel';
 import useForkRef from '../utils/useForkRef';
 import capitalize from '../utils/capitalize';
@@ -11,8 +12,9 @@ import memoTheme from '../utils/memoTheme';
 import { useDefaultProps } from '../DefaultPropsProvider';
 import chipLinkClasses, { getChipLinkUtilityClass } from './chipLinkClasses';
 import useSlot from '../utils/useSlot';
-import { TouchRippleComponent, isDeleteKeyboardEvent } from '../Chip/utils';
+import { TouchRippleComponent } from '../Chip/utils';
 import useChipInteraction from '../Chip/useChipInteraction';
+import useChipActionHandlers from '../Chip/useChipActionHandlers';
 import type { ChipLinkOwnerState, ChipLinkProps } from './ChipLink.types';
 import {
   getChipRootStyles,
@@ -149,7 +151,7 @@ const ChipLink = React.forwardRef<HTMLDivElement, ChipLinkProps>(function ChipLi
   const chipRef = React.useRef<HTMLDivElement>(null);
   const handleRef = useForkRef(chipRef, ref);
 
-  const labelId = React.useId();
+  const labelId = useId();
   const hasDelete = Boolean(onDelete);
   const iconElement = avatarProp || iconProp;
 
@@ -161,6 +163,16 @@ const ChipLink = React.forwardRef<HTMLDivElement, ChipLinkProps>(function ChipLi
     enableTouchRipple,
     touchRippleRef,
   } = useChipInteraction({ onFocus, onBlur });
+
+  const { getInteractiveSlotHandlers, getDeleteButtonSlotHandlers } = useChipActionHandlers({
+    onClick,
+    onKeyDown,
+    onKeyUp,
+    onDelete,
+    onFocus: handleFocus,
+    onBlur: handleBlur,
+    getRippleHandlers,
+  });
 
   const ownerState: ChipLinkOwnerState = {
     ...props,
@@ -207,33 +219,7 @@ const ChipLink = React.forwardRef<HTMLDivElement, ChipLinkProps>(function ChipLi
     getSlotProps: (handlers: Record<string, React.EventHandler<React.SyntheticEvent>>) => ({
       ...handlers,
       ...(!hasDelete && {
-        ...getRippleHandlers(handlers),
-        onClick: (event: React.MouseEvent<HTMLElement>) => {
-          handlers.onClick?.(event);
-          onClick?.(event);
-        },
-        onFocus: (event: React.FocusEvent<HTMLElement>) => {
-          handlers.onFocus?.(event);
-          handleFocus(event);
-        },
-        onBlur: (event: React.FocusEvent<HTMLElement>) => {
-          handlers.onBlur?.(event);
-          handleBlur(event);
-        },
-        onKeyDown: (event: React.KeyboardEvent<HTMLElement>) => {
-          handlers.onKeyDown?.(event);
-          onKeyDown?.(event);
-          if (onDelete && isDeleteKeyboardEvent(event)) {
-            event.preventDefault();
-          }
-        },
-        onKeyUp: (event: React.KeyboardEvent<HTMLElement>) => {
-          handlers.onKeyUp?.(event);
-          onKeyUp?.(event);
-          if (onDelete && isDeleteKeyboardEvent(event)) {
-            onDelete(event);
-          }
-        },
+        ...getInteractiveSlotHandlers(handlers, { handleDeleteKey: Boolean(onDelete) }),
       }),
     }),
   });
@@ -250,36 +236,8 @@ const ChipLink = React.forwardRef<HTMLDivElement, ChipLinkProps>(function ChipLi
       href,
       'aria-labelledby': labelId,
     },
-    getSlotProps: (handlers: Record<string, React.EventHandler<React.SyntheticEvent>>) => ({
-      ...handlers,
-      ...getRippleHandlers(handlers),
-      onClick: (event: React.MouseEvent<HTMLElement>) => {
-        handlers.onClick?.(event);
-        onClick?.(event);
-      },
-      onFocus: (event: React.FocusEvent<HTMLElement>) => {
-        handlers.onFocus?.(event);
-        handleFocus(event);
-      },
-      onBlur: (event: React.FocusEvent<HTMLElement>) => {
-        handlers.onBlur?.(event);
-        handleBlur(event);
-      },
-      onKeyDown: (event: React.KeyboardEvent<HTMLElement>) => {
-        handlers.onKeyDown?.(event);
-        onKeyDown?.(event);
-        if (isDeleteKeyboardEvent(event)) {
-          event.preventDefault();
-        }
-      },
-      onKeyUp: (event: React.KeyboardEvent<HTMLElement>) => {
-        handlers.onKeyUp?.(event);
-        onKeyUp?.(event);
-        if (isDeleteKeyboardEvent(event)) {
-          onDelete!(event);
-        }
-      },
-    }),
+    getSlotProps: (handlers: Record<string, React.EventHandler<React.SyntheticEvent>>) =>
+      getInteractiveSlotHandlers(handlers, { handleDeleteKey: true }),
   });
 
   // -- Slot: Label --
@@ -303,14 +261,8 @@ const ChipLink = React.forwardRef<HTMLDivElement, ChipLinkProps>(function ChipLi
       'aria-label': deleteLabel,
       type: 'button' as const,
     },
-    getSlotProps: (handlers: Record<string, React.EventHandler<React.SyntheticEvent>>) => ({
-      ...handlers,
-      onClick: (event: React.MouseEvent<HTMLElement>) => {
-        handlers.onClick?.(event);
-        event.stopPropagation();
-        onDelete?.(event);
-      },
-    }),
+    getSlotProps: (handlers: Record<string, React.EventHandler<React.SyntheticEvent>>) =>
+      getDeleteButtonSlotHandlers(handlers),
   });
 
   // -- Slot: Icon --

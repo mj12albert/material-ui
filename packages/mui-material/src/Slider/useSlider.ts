@@ -245,20 +245,14 @@ export function useSlider(parameters: UseSliderParameters): UseSliderReturnValue
   const [open, setOpen] = React.useState(-1);
   const [dragging, setDragging] = React.useState(false);
   const moveCount = React.useRef(0);
-  const cancelFocusFrame = React.useCallback(() => {
+  const cancelFocusFrame = useEventCallback(() => {
     if (focusFrame.current != null) {
       cancelAnimationFrame(focusFrame.current);
       focusFrame.current = null;
     }
-  }, []);
+  });
   // lastChangedValue is updated whenever onChange is triggered.
   const lastChangedValue = React.useRef<number | number[] | null>(null);
-
-  React.useEffect(() => {
-    return () => {
-      cancelFocusFrame();
-    };
-  }, [cancelFocusFrame]);
 
   const [valueDerived, setValueState] = useControlled({
     controlled: valueProp,
@@ -667,9 +661,10 @@ export function useSlider(parameters: UseSliderParameters): UseSliderReturnValue
     return () => {
       slider!.removeEventListener('touchstart', handleTouchStart);
 
+      cancelFocusFrame();
       stopListening();
     };
-  }, [stopListening, handleTouchStart]);
+  }, [stopListening, handleTouchStart, cancelFocusFrame]);
 
   React.useEffect(() => {
     if (disabled) {

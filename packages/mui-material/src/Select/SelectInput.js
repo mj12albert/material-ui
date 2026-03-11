@@ -6,7 +6,6 @@ import clsx from 'clsx';
 import composeClasses from '@mui/utils/composeClasses';
 import useId from '@mui/utils/useId';
 import refType from '@mui/utils/refType';
-import useEventCallback from '@mui/utils/useEventCallback';
 import ownerDocument from '../utils/ownerDocument';
 import capitalize from '../utils/capitalize';
 import Menu from '../Menu/Menu';
@@ -167,8 +166,7 @@ const SelectInput = React.forwardRef(function SelectInput(props, ref) {
 
   const inputRef = React.useRef(null);
   const displayRef = React.useRef(null);
-  const listRef = React.useRef(null);
-  const [listElement, setListElement] = React.useState(null);
+  const [listActions, setListActions] = React.useState(null);
   const [displayNode, setDisplayNode] = React.useState(null);
   const { current: isOpenControlled } = React.useRef(openProp != null);
   const [menuMinWidthState, setMenuMinWidthState] = React.useState();
@@ -256,36 +254,14 @@ const SelectInput = React.forwardRef(function SelectInput(props, ref) {
     return undefined;
   }, [labelId]);
 
-  const focusActiveOptionWithoutFocusVisible = useEventCallback((listNode) => {
-    if (openInteractionType !== 'pointer') {
-      return;
-    }
-
-    const activeOption =
-      listNode?.querySelector('[role="option"][tabindex="0"]') ||
-      displayRef.current?.getRootNode()?.querySelector?.('[role="option"][tabindex="0"]');
-
-    if (!activeOption) {
-      return;
-    }
-
-    try {
-      activeOption.focus({
+  React.useEffect(() => {
+    if (open && openInteractionType === 'pointer') {
+      listActions?.focusActiveItem({
         preventScroll: true,
         focusVisible: false,
       });
-    } catch {
-      activeOption.focus();
     }
-  });
-
-  React.useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    focusActiveOptionWithoutFocusVisible(listElement);
-  }, [open, listElement, focusActiveOptionWithoutFocusVisible]);
+  }, [open, openInteractionType, listActions]);
 
   const update = (openParam, event) => {
     if (openParam) {
@@ -578,9 +554,9 @@ const SelectInput = React.forwardRef(function SelectInput(props, ref) {
       ? MenuProps.slotProps.list(ownerState)
       : MenuProps.slotProps?.list),
   };
-  const handleListRef = useForkRef(listRef, listProps.ref, setListElement);
 
   const listboxId = useId();
+  const handleListActionsRef = useForkRef(listProps.actions, setListActions);
 
   return (
     <React.Fragment>
@@ -658,7 +634,7 @@ const SelectInput = React.forwardRef(function SelectInput(props, ref) {
             disableListWrap: true,
             id: listboxId,
             ...listProps,
-            ref: handleListRef,
+            actions: handleListActionsRef,
           },
           paper: {
             ...paperProps,

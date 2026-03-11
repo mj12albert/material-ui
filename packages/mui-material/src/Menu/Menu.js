@@ -13,6 +13,7 @@ import rootShouldForwardProp from '../styles/rootShouldForwardProp';
 import { styled } from '../zero-styled';
 import { useDefaultProps } from '../DefaultPropsProvider';
 import { getMenuUtilityClass } from './menuClasses';
+import useForkRef from '../utils/useForkRef';
 import useSlot from '../utils/useSlot';
 
 const RTL_ORIGIN = {
@@ -199,6 +200,8 @@ const Menu = React.forwardRef(function Menu(inProps, ref) {
     }),
     ownerState,
   });
+  const { actions: listActions, ...otherListSlotProps } = listSlotProps;
+  const handleListActionsRef = useForkRef(menuListActionsRef, listActions);
 
   const resolvedTransitionProps =
     typeof externalForwardedProps.slotProps.transition === 'function'
@@ -245,11 +248,11 @@ const Menu = React.forwardRef(function Menu(inProps, ref) {
       classes={PopoverClasses}
     >
       <ListSlot
-        actions={menuListActionsRef}
+        actions={handleListActionsRef}
         autoFocus={autoFocus && (activeItemIndex === -1 || disableAutoFocusItem)}
         autoFocusItem={autoFocusItem}
         variant={variant}
-        {...listSlotProps}
+        {...otherListSlotProps}
       >
         {children}
       </ListSlot>

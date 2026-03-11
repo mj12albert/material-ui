@@ -2,6 +2,8 @@
 import * as React from 'react';
 import { isFragment } from 'react-is';
 import PropTypes from 'prop-types';
+import getReactElementRef from '@mui/utils/getReactElementRef';
+import setRef from '@mui/utils/setRef';
 import useRovingTabIndex from '../utils/useRovingTabIndex';
 import ownerDocument from '../utils/ownerDocument';
 import List from '../List';
@@ -72,6 +74,7 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
     ...other
   } = props;
   const listRef = React.useRef(null);
+  const activeItemRef = React.useRef(null);
   const textCriteriaRef = React.useRef({
     keys: [],
     repeating: true,
@@ -99,6 +102,17 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
           listRef.current.style.width = `calc(100% + ${scrollbarSize})`;
         }
         return listRef.current;
+      },
+      focusActiveItem: (focusOptions) => {
+        if (!activeItemRef.current) {
+          return;
+        }
+
+        try {
+          activeItemRef.current.focus(focusOptions);
+        } catch {
+          activeItemRef.current.focus();
+        }
       },
     }),
     [],
@@ -175,7 +189,13 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
       return child;
     }
 
-    const rovingTabIndexItemProps = getItemProps(focusableIndex, child.ref);
+    const rovingTabIndexItemProps = getItemProps(focusableIndex, (instance) => {
+      if (index === activeItemIndex) {
+        activeItemRef.current = instance;
+      }
+
+      setRef(getReactElementRef(child), instance);
+    });
     const newChildProps = { ref: rovingTabIndexItemProps.ref };
 
     if (child.props.tabIndex === undefined && variant === 'selectedMenu') {

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { expect } from 'chai';
 import { stub } from 'sinon';
-import { createRenderer, fireEvent, screen } from '@mui/internal-test-utils';
+import { act, createRenderer, fireEvent, screen } from '@mui/internal-test-utils';
 import Divider from '@mui/material/Divider';
 import MenuList from '@mui/material/MenuList';
 import MenuItem from '@mui/material/MenuItem';
@@ -220,6 +220,27 @@ describe('<MenuList />', () => {
       await user.click(tabElements[0]);
       expect(tabElements[0]).to.have.attribute('tabIndex', '0');
       expect(tabElements[1]).to.have.attribute('tabIndex', '-1');
+    });
+  });
+
+  describe('actions: focusActiveItem', () => {
+    it('should focus the active item', () => {
+      const menuListActionsRef = React.createRef();
+
+      render(
+        <MenuList actions={menuListActionsRef}>
+          <MenuItem>One</MenuItem>
+          <MenuItem selected>Two</MenuItem>
+        </MenuList>,
+      );
+
+      const activeItem = screen.getByRole('menuitem', { name: 'Two' });
+
+      act(() => {
+        menuListActionsRef.current.focusActiveItem();
+      });
+
+      expect(document.activeElement).to.equal(activeItem);
     });
   });
 });

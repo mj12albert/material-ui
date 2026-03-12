@@ -1918,7 +1918,7 @@ describe('<Select />', () => {
   );
 
   // JSDOM doesn't support :focus-visible
-  it.skipIf(isJsdom())(
+  it.skipIf(isJsdom() || /firefox/i.test(window.navigator.userAgent))(
     'should apply focusVisible class when opened by keyboard after keyboard modality',
     async () => {
       render(

@@ -1913,7 +1913,10 @@ describe('<Select />', () => {
       fireEvent.keyDown(document.body, { key: 'Tab' });
       fireEvent.mouseDown(trigger);
 
-      expect(screen.getByRole('option', { name: 'None' })).not.to.have.class('focus-visible');
+      const option = screen.getByRole('option', { name: 'None' });
+
+      expect(option).toHaveFocus();
+      expect(option).not.to.have.class('focus-visible');
     },
   );
 
@@ -1937,7 +1940,10 @@ describe('<Select />', () => {
       });
       fireEvent.keyDown(trigger, { key: 'Enter' });
 
-      expect(screen.getByRole('option', { name: 'None' })).to.have.class('focus-visible');
+      const option = screen.getByRole('option', { name: 'None' });
+
+      expect(option).toHaveFocus();
+      expect(option).to.have.class('focus-visible');
     },
   );
 

@@ -63,9 +63,10 @@ const InputRoot = styled(InputBaseRoot, {
         {
           props: ({ ownerState }) => ownerState.formControl,
           style: {
-            [`.${inputLabelClasses.root} + &`]: {
-              marginTop: 16,
-            },
+            [`label + &, :where(.${inputLabelClasses.root}) + &, div:where(.${inputLabelClasses.root}) + &`]:
+              {
+                marginTop: 16,
+              },
           },
         },
         {

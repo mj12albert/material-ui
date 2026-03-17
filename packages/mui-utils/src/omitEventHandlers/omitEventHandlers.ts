@@ -12,11 +12,21 @@ function omitEventHandlers<Props extends Record<string, unknown>>(object: Props 
 
   const result = {} as Partial<Props>;
 
-  Object.keys(object)
-    .filter((prop) => !(prop.match(/^on[A-Z]/) && typeof object[prop] === 'function'))
-    .forEach((prop) => {
-      (result[prop] as any) = object[prop];
-    });
+  const keys = Object.keys(object);
+  for (let i = 0; i < keys.length; i += 1) {
+    const key = keys[i];
+    if (
+      !(
+        key.charCodeAt(0) === 111 /* o */ &&
+        key.charCodeAt(1) === 110 /* n */ &&
+        key.charCodeAt(2) >= 65 /* A */ &&
+        key.charCodeAt(2) <= 90 /* Z */ &&
+        typeof object[key] === 'function'
+      )
+    ) {
+      (result[key] as any) = object[key];
+    }
+  }
 
   return result;
 }

@@ -30,9 +30,7 @@ export default function mergeSlotProps<
   ) {
     const handlers: Record<string, Function> = {};
 
-    const keys = Object.keys(defaultSlotPropsValue);
-    for (let i = 0; i < keys.length; i += 1) {
-      const key = keys[i];
+    Object.keys(defaultSlotPropsValue).forEach((key) => {
       if (
         isEventHandler(key, defaultSlotPropsValue[key]) &&
         typeof externalSlotPropsValue[key] === 'function'
@@ -43,7 +41,7 @@ export default function mergeSlotProps<
           defaultSlotPropsValue[key](...args);
         };
       }
-    }
+    });
     return handlers;
   }
   if (typeof externalSlotProps === 'function' || typeof defaultSlotProps === 'function') {
@@ -66,10 +64,8 @@ export default function mergeSlotProps<
         ...defaultSlotPropsValue,
         ...externalSlotPropsValue,
         ...handlers,
+        ...(!!className && { className }),
       };
-      if (className) {
-        result.className = className;
-      }
       if (defaultSlotPropsValue?.style && externalSlotPropsValue?.style) {
         result.style = { ...defaultSlotPropsValue.style, ...externalSlotPropsValue.style };
       }
@@ -93,10 +89,8 @@ export default function mergeSlotProps<
     ...defaultSlotProps,
     ...externalSlotProps,
     ...handlers,
+    ...(!!className && { className }),
   };
-  if (className) {
-    result.className = className;
-  }
   if (typedDefaultSlotProps?.style && externalSlotProps?.style) {
     result.style = { ...typedDefaultSlotProps.style, ...externalSlotProps.style };
   }

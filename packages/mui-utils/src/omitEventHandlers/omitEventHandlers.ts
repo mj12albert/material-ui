@@ -1,3 +1,5 @@
+import { isEventHandler } from '../extractEventHandlers/extractEventHandlers';
+
 /**
  * Removes event handlers from the given object.
  * A field is considered an event handler if it is a function with a name beginning with `on`.
@@ -15,15 +17,7 @@ function omitEventHandlers<Props extends Record<string, unknown>>(object: Props 
   const keys = Object.keys(object);
   for (let i = 0; i < keys.length; i += 1) {
     const key = keys[i];
-    if (
-      !(
-        key.charCodeAt(0) === 111 /* o */ &&
-        key.charCodeAt(1) === 110 /* n */ &&
-        key.charCodeAt(2) >= 65 /* A */ &&
-        key.charCodeAt(2) <= 90 /* Z */ &&
-        typeof object[key] === 'function'
-      )
-    ) {
+    if (!isEventHandler(key, object[key])) {
       (result[key] as any) = object[key];
     }
   }

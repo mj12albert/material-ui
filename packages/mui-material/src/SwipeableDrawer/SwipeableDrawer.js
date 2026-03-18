@@ -17,6 +17,14 @@ import { mergeSlotProps } from '../utils';
 import useSlot from '../utils/useSlot';
 import SwipeArea from './SwipeArea';
 
+function extractRef(props) {
+  if (!props || typeof props === 'function') {
+    return [undefined, props];
+  }
+  const { ref, ...rest } = props;
+  return [ref, rest];
+}
+
 // This value is closed to what browsers are using internally to
 // trigger a native scroll.
 const UNCERTAINTY_THRESHOLD = 3; // px
@@ -175,7 +183,13 @@ const SwipeableDrawer = React.forwardRef(function SwipeableDrawer(inProps, ref) 
   const backdropRef = React.useRef();
   const paperRef = React.useRef();
 
-  const handleRef = useForkRef(PaperProps.ref, paperRef);
+  const [paperSlotPropsRef, paperSlotPropsWithoutRef] = extractRef(slotProps.paper ?? PaperProps);
+  const mergedPaperRef = useForkRef(PaperProps.ref, paperSlotPropsRef, paperRef);
+
+  const [backdropSlotPropsRef, backdropSlotPropsWithoutRef] = extractRef(
+    slotProps.backdrop ?? BackdropProps,
+  );
+  const mergedBackdropRef = useForkRef(backdropSlotPropsRef, backdropRef);
 
   const touchDetected = React.useRef(false);
 
@@ -630,15 +644,15 @@ const SwipeableDrawer = React.forwardRef(function SwipeableDrawer(inProps, ref) 
         slots={slots}
         slotProps={{
           ...slotProps,
-          backdrop: mergeSlotProps(slotProps.backdrop ?? BackdropProps, {
-            ref: backdropRef,
+          backdrop: mergeSlotProps(backdropSlotPropsWithoutRef, {
+            ref: mergedBackdropRef,
           }),
-          paper: mergeSlotProps(slotProps.paper ?? PaperProps, {
+          paper: mergeSlotProps(paperSlotPropsWithoutRef, {
             style: {
               pointerEvents:
                 variant === 'temporary' && !open && !allowSwipeInChildren ? 'none' : '',
             },
-            ref: handleRef,
+            ref: mergedPaperRef,
           }),
         }}
         {...other}

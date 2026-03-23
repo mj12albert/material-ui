@@ -47,10 +47,7 @@ const SelectIcon = styled(StyledSelectIcon, {
   slot: 'Icon',
   overridesResolver: (props, styles) => {
     const { ownerState } = props;
-    return [
-      styles.icon,
-      ownerState.open && styles.iconOpen,
-    ];
+    return [styles.icon, ownerState.open && styles.iconOpen];
   },
 })({});
 

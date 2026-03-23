@@ -931,6 +931,61 @@ The following deprecated prop has been removed:
  />
 ```
 
+#### LinearProgress deprecated CSS classes removed
+
+Use the [linear-progress-classes codemod](https://github.com/mui/material-ui/tree/HEAD/packages/mui-codemod#linear-progress-classes) below to migrate the code as described in the following section:
+
+```bash
+npx @mui/codemod@latest deprecations/linear-progress-classes <path>
+```
+
+The following deprecated `LinearProgress` CSS classes have been removed:
+
+- `bar1Buffer` → use `.MuiLinearProgress-buffer > .MuiLinearProgress-bar1`
+- `bar1Determinate` → use `.MuiLinearProgress-determinate > .MuiLinearProgress-bar1`
+- `bar1Indeterminate` → use `.MuiLinearProgress-indeterminate > .MuiLinearProgress-bar1`
+- `bar2Buffer` → use `.MuiLinearProgress-buffer > .MuiLinearProgress-bar2`
+- `bar2Indeterminate` → use `.MuiLinearProgress-indeterminate > .MuiLinearProgress-bar2`
+- `barColorPrimary` → use `.MuiLinearProgress-colorPrimary > .MuiLinearProgress-bar`
+- `barColorSecondary` → use `.MuiLinearProgress-colorSecondary > .MuiLinearProgress-bar`
+- `dashedColorPrimary` → use `.MuiLinearProgress-colorPrimary > .MuiLinearProgress-dashed`
+- `dashedColorSecondary` → use `.MuiLinearProgress-colorSecondary > .MuiLinearProgress-dashed`
+
+If you were using these deprecated class names as `styleOverrides` keys in your theme, use the `variants` array in the appropriate slot override instead:
+
+```diff
+ const theme = createTheme({
+   components: {
+     MuiLinearProgress: {
+       styleOverrides: {
+-        bar1Determinate: { transition: 'none' },
+-        bar1Indeterminate: { width: 'auto' },
+-        bar1Buffer: { zIndex: 1 },
+-        barColorPrimary: { backgroundColor: 'red' },
+-        dashedColorPrimary: { backgroundSize: '10px 10px' },
++        bar1: {
++          variants: [
++            { props: { variant: 'determinate' }, style: { transition: 'none' } },
++            { props: { variant: 'indeterminate' }, style: { width: 'auto' } },
++            { props: { variant: 'buffer' }, style: { zIndex: 1 } },
++          ],
++        },
++        bar: {
++          variants: [
++            { props: { color: 'primary' }, style: { backgroundColor: 'red' } },
++          ],
++        },
++        dashed: {
++          variants: [
++            { props: { color: 'primary' }, style: { backgroundSize: '10px 10px' } },
++          ],
++        },
+       },
+     },
+   },
+ });
+```
+
 #### ListItem deprecated props removed
 
 Use the [list-item-props codemod](https://github.com/mui/material-ui/tree/HEAD/packages/mui-codemod#list-item-props) below to migrate the code as described in the following section:

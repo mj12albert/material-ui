@@ -1072,6 +1072,49 @@ The following deprecated `Radio` props have been removed:
  />
 ```
 
+#### Select deprecated CSS classes removed
+
+Use the [select-classes codemod](https://github.com/mui/material-ui/tree/HEAD/packages/mui-codemod#select-classes) below to migrate the code as described in the following section:
+
+```bash
+npx @mui/codemod@latest deprecations/select-classes <path>
+```
+
+The following deprecated `Select` CSS classes have been removed:
+
+- `iconFilled` → use `.MuiSelect-filled ~ .MuiSelect-icon`
+- `iconOutlined` → use `.MuiSelect-outlined ~ .MuiSelect-icon`
+- `iconStandard` → use `.MuiSelect-standard ~ .MuiSelect-icon`
+
+If you were using these deprecated class names as `styleOverrides` in your theme, use sibling selectors in the `root` override instead:
+
+```diff
+ import { selectClasses } from '@mui/material/Select';
+
+ const theme = createTheme({
+   components: {
+     MuiSelect: {
+       styleOverrides: {
+         root: {
+-          [`& .${selectClasses.iconFilled}`]: {
++          [`& .${selectClasses.filled} ~ .${selectClasses.icon}`]: {
+             color: 'red',
+           },
+-          [`& .${selectClasses.iconOutlined}`]: {
++          [`& .${selectClasses.outlined} ~ .${selectClasses.icon}`]: {
+             color: 'red',
+           },
+-          [`& .${selectClasses.iconStandard}`]: {
++          [`& .${selectClasses.standard} ~ .${selectClasses.icon}`]: {
+             color: 'red',
+           },
+         },
+       },
+     },
+   },
+ });
+```
+
 #### Slider deprecated props removed
 
 Use the [slider-props codemod](https://github.com/mui/material-ui/tree/HEAD/packages/mui-codemod#slider-props) below to migrate the code as described in the following section:

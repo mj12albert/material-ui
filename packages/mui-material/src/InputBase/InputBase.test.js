@@ -362,6 +362,7 @@ describe('<InputBase />', () => {
           </FormControl>,
         );
         expect(screen.getByTestId('root')).to.have.class(classes.sizeSmall);
+        expect(screen.getByRole('textbox')).to.have.class(classes.input);
       });
 
       it('should be overridden by props', () => {
@@ -377,6 +378,18 @@ describe('<InputBase />', () => {
 
         setProps({ size: 'small' });
         expect(screen.getByTestId('root')).to.have.class(classes.sizeSmall);
+        expect(screen.getByRole('textbox')).to.have.class(classes.input);
+      });
+
+      it('has a hiddenLabel class to further reduce margin', () => {
+        render(
+          <FormControl hiddenLabel margin="dense">
+            <InputBase data-testid="root" />
+          </FormControl>,
+        );
+
+        expect(screen.getByTestId('root')).to.have.class(classes.hiddenLabel);
+        expect(screen.getByRole('textbox')).to.have.class(classes.input);
       });
     });
 

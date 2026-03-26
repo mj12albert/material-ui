@@ -73,6 +73,9 @@ export function getChipRootStyles(theme: Theme, classes: ChipRootClassRefs) {
   return {
     ...getChipBaseStyles(theme),
     position: 'relative' as const,
+    // Contain internal z-index layering (label, adornments, action ::after)
+    // so it doesn't bleed into external stacking contexts (e.g. Popper).
+    isolation: 'isolate' as const,
     ...(classes.disabled && {
       [`&.${classes.disabled}`]: {
         opacity: (theme.vars || theme).palette.action.disabledOpacity,

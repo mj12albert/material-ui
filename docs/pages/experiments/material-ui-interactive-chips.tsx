@@ -1,5 +1,9 @@
 import * as React from 'react';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import ClickAwayListener from '@mui/material/ClickAwayListener';
+import Paper from '@mui/material/Paper';
+import Popper from '@mui/material/Popper';
 import Typography from '@mui/material/Typography';
 import Avatar from '@mui/material/Avatar';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -280,6 +284,9 @@ export default function MaterialUiInteractiveChips() {
           />
         </Section>
 
+        {/* -- ClickAway bug repro -- */}
+        <ClickAwayPopperSection />
+
         {/* -- Static chip (no action) -- */}
         <Section title="Static chip (no action)">
           <Chip label="Static chip" />
@@ -312,6 +319,63 @@ export default function MaterialUiInteractiveChips() {
         </Section>
       </Box>
     </ThemeProvider>
+  );
+}
+
+function ClickAwayPopperSection() {
+  const [anchorEl, setAnchorEl] = React.useState<HTMLElement>();
+  const isOpen = Boolean(anchorEl);
+
+  return (
+    <Box sx={{ mb: 4 }}>
+      <a href="https://github.com/mui/material-ui/issues/47234" id="popper-bug">
+        <Typography variant="subtitle2" sx={{ mb: 1.5, color: 'text.secondary' }}>
+          ClickAway + Popper bug repro
+        </Typography>
+      </a>
+      <Typography variant="body2" sx={{ mb: 1.5 }}>
+        Open the popper, then click the delete icon on the chip. With the old API the popper does
+        NOT close (bug). With the new API it should close.
+      </Typography>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', mb: 2 }}>
+        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+          New API:
+        </Typography>
+        <Chip
+          label="Click delete icon"
+          action={<ChipButton onClick={() => {}} />}
+          endAdornment={<ChipDelete onClick={() => {}} />}
+        />
+      </Box>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', mb: 2 }}>
+        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+          Old API:
+        </Typography>
+        <Chip label="Click delete icon" onDelete={() => {}} />
+      </Box>
+      <Button
+        variant="contained"
+        size="small"
+        onClick={({ currentTarget }) => {
+          setAnchorEl(isOpen ? undefined : currentTarget);
+        }}
+      >
+        {isOpen ? 'Close Popper' : 'Open Popper'}
+      </Button>
+      <Popper open={isOpen} anchorEl={anchorEl} placement="bottom-start">
+        <ClickAwayListener onClickAway={() => setAnchorEl(undefined)}>
+          <Paper sx={{ p: 3, maxWidth: 300, mt: 1 }}>
+            <Typography variant="body2">
+              Clicking anywhere on the page closes this popper.
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 1, color: 'error.main' }}>
+              Bug: clicking the delete icon on the OLD API chip does NOT close the popper (because
+              of stopPropagation on ButtonBase).
+            </Typography>
+          </Paper>
+        </ClickAwayListener>
+      </Popper>
+    </Box>
   );
 }
 

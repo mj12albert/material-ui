@@ -34,6 +34,12 @@ export interface ChipDeleteOwnProps {
    */
   label?: string | undefined;
   /**
+   * Callback fired when the delete action is triggered.
+   * This fires on click, keyboard activation (Enter/Space), and when
+   * Backspace or Delete is pressed while the component has focus.
+   */
+  onDelete?: React.EventHandler<React.SyntheticEvent<HTMLElement>> | undefined;
+  /**
    * @ignore
    */
   onClick?: React.MouseEventHandler<HTMLElement> | undefined;

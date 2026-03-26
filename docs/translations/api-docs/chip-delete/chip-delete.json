@@ -17,6 +17,9 @@
     "nativeButton": {
       "description": "If <code>true</code>, the component is expected to resolve to a native <code>&lt;button&gt;</code> element. When omitted, native button semantics are inferred when <code>component</code> is <code>&#39;button&#39;</code> or absent. Set explicitly when using a custom <code>component</code> that resolves to a native <code>&lt;button&gt;</code>."
     },
+    "onDelete": {
+      "description": "Callback fired when the delete action is triggered. This fires on click, keyboard activation (Enter/Space), and when Backspace or Delete is pressed while the component has focus."
+    },
     "sx": {
       "description": "The system prop that allows defining system overrides as well as additional CSS styles."
     }

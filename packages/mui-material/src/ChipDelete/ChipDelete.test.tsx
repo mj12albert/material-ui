@@ -48,65 +48,16 @@ describe('<ChipDelete />', () => {
       expect(handleClick.callCount).to.equal(1);
     });
 
-    it('calls event.stopPropagation() on click', () => {
-      const handleChipClick = spy();
+    it('does not call event.stopPropagation() on click', () => {
+      const handleParentClick = spy();
       render(
-        <div onClick={handleChipClick}>
+        <div onClick={handleParentClick}>
           <Chip label="Chip" endAdornment={<ChipDelete onClick={() => {}} />} />
         </div>,
       );
 
       fireEvent.click(screen.getByRole('button'));
-      expect(handleChipClick.callCount).to.equal(0);
-    });
-
-    it('calls event.stopPropagation() for keyboard-triggered Enter clicks on non-native roots', () => {
-      const handleChipClick = spy();
-      const handleDeleteClick = spy();
-
-      render(
-        <div onClick={handleChipClick}>
-          <Chip
-            label="Chip"
-            endAdornment={<ChipDelete component="div" onClick={handleDeleteClick} />}
-          />
-        </div>,
-      );
-
-      const button = screen.getByRole('button');
-      act(() => {
-        button.focus();
-      });
-
-      fireEvent.keyDown(button, { key: 'Enter' });
-
-      expect(handleDeleteClick.callCount).to.equal(1);
-      expect(handleChipClick.callCount).to.equal(0);
-    });
-
-    it('calls event.stopPropagation() for keyboard-triggered Space clicks on non-native roots', () => {
-      const handleChipClick = spy();
-      const handleDeleteClick = spy();
-
-      render(
-        <div onClick={handleChipClick}>
-          <Chip
-            label="Chip"
-            endAdornment={<ChipDelete component="div" onClick={handleDeleteClick} />}
-          />
-        </div>,
-      );
-
-      const button = screen.getByRole('button');
-      act(() => {
-        button.focus();
-      });
-
-      fireEvent.keyDown(button, { key: ' ' });
-      fireEvent.keyUp(button, { key: ' ' });
-
-      expect(handleDeleteClick.callCount).to.equal(1);
-      expect(handleChipClick.callCount).to.equal(0);
+      expect(handleParentClick.callCount).to.equal(1);
     });
   });
 
@@ -126,7 +77,7 @@ describe('<ChipDelete />', () => {
       expect(handleClick.callCount).to.equal(0);
     });
 
-    it('still calls stopPropagation when disabled', () => {
+    it('allows click propagation when disabled', () => {
       const handleParentClick = spy();
       render(
         <div onClick={handleParentClick}>
@@ -135,7 +86,7 @@ describe('<ChipDelete />', () => {
       );
 
       fireEvent.click(screen.getByRole('button'));
-      expect(handleParentClick.callCount).to.equal(0);
+      expect(handleParentClick.callCount).to.equal(1);
     });
 
     it('renders disabled when focusableWhenDisabled=false', () => {
@@ -208,7 +159,7 @@ describe('<ChipDelete />', () => {
       expect(handleClick.callCount).to.equal(1);
     });
 
-    it('stopPropagation is preserved with custom component', () => {
+    it('allows click propagation with custom component', () => {
       const handleParentClick = spy();
       render(
         <div onClick={handleParentClick}>
@@ -217,7 +168,7 @@ describe('<ChipDelete />', () => {
       );
 
       fireEvent.click(screen.getByRole('button'));
-      expect(handleParentClick.callCount).to.equal(0);
+      expect(handleParentClick.callCount).to.equal(1);
     });
 
     it('disabled non-native root: click handler does not fire', () => {
@@ -265,6 +216,156 @@ describe('<ChipDelete />', () => {
       expect(el.tagName).to.equal('A');
       expect(el).to.have.attribute('role', 'button');
       expect(el).not.to.have.attribute('type');
+    });
+  });
+
+  describe('prop: onDelete', () => {
+    it('fires on mouse click', () => {
+      const handleDelete = spy();
+      render(<Chip label="Chip" endAdornment={<ChipDelete onDelete={handleDelete} />} />);
+
+      fireEvent.click(screen.getByRole('button'));
+      expect(handleDelete.callCount).to.equal(1);
+    });
+
+    it('fires on Enter for native <button>', async () => {
+      const handleDelete = spy();
+      const { user } = render(
+        <Chip label="Chip" endAdornment={<ChipDelete onDelete={handleDelete} />} />,
+      );
+
+      const button = screen.getByRole('button');
+      act(() => {
+        button.focus();
+      });
+      await user.keyboard('{Enter}');
+      expect(handleDelete.callCount).to.equal(1);
+    });
+
+    it('fires on Space for native <button>', async () => {
+      const handleDelete = spy();
+      const { user } = render(
+        <Chip label="Chip" endAdornment={<ChipDelete onDelete={handleDelete} />} />,
+      );
+
+      const button = screen.getByRole('button');
+      act(() => {
+        button.focus();
+      });
+      await user.keyboard(' ');
+      expect(handleDelete.callCount).to.equal(1);
+    });
+
+    it('fires on Enter for non-native component="div"', () => {
+      const handleDelete = spy();
+      render(
+        <Chip label="Chip" endAdornment={<ChipDelete component="div" onDelete={handleDelete} />} />,
+      );
+
+      const button = screen.getByRole('button');
+      act(() => {
+        button.focus();
+      });
+      fireEvent.keyDown(button, { key: 'Enter' });
+      expect(handleDelete.callCount).to.equal(1);
+    });
+
+    it('fires on Space for non-native component="div"', () => {
+      const handleDelete = spy();
+      render(
+        <Chip label="Chip" endAdornment={<ChipDelete component="div" onDelete={handleDelete} />} />,
+      );
+
+      const button = screen.getByRole('button');
+      act(() => {
+        button.focus();
+      });
+      fireEvent.keyDown(button, { key: ' ' });
+      fireEvent.keyUp(button, { key: ' ' });
+      expect(handleDelete.callCount).to.equal(1);
+    });
+
+    it('fires on Backspace', () => {
+      const handleDelete = spy();
+      render(<Chip label="Chip" endAdornment={<ChipDelete onDelete={handleDelete} />} />);
+
+      const button = screen.getByRole('button');
+      act(() => {
+        button.focus();
+      });
+      fireEvent.keyDown(button, { key: 'Backspace' });
+      expect(handleDelete.callCount).to.equal(1);
+    });
+
+    it('fires on Delete key', () => {
+      const handleDelete = spy();
+      render(<Chip label="Chip" endAdornment={<ChipDelete onDelete={handleDelete} />} />);
+
+      const button = screen.getByRole('button');
+      act(() => {
+        button.focus();
+      });
+      fireEvent.keyDown(button, { key: 'Delete' });
+      expect(handleDelete.callCount).to.equal(1);
+    });
+
+    it('does NOT fire when disabled', () => {
+      const handleDelete = spy();
+      render(<Chip label="Chip" disabled endAdornment={<ChipDelete onDelete={handleDelete} />} />);
+
+      const button = screen.getByRole('button');
+      act(() => {
+        button.focus();
+      });
+      fireEvent.click(button);
+      fireEvent.keyDown(button, { key: 'Backspace' });
+      fireEvent.keyDown(button, { key: 'Delete' });
+      expect(handleDelete.callCount).to.equal(0);
+    });
+
+    it('both onClick and onDelete fire on click, onClick first', () => {
+      const callOrder: string[] = [];
+      const handleClick = spy(() => callOrder.push('click'));
+      const handleDelete = spy(() => callOrder.push('delete'));
+      render(
+        <Chip
+          label="Chip"
+          endAdornment={<ChipDelete onClick={handleClick} onDelete={handleDelete} />}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole('button'));
+      expect(handleClick.callCount).to.equal(1);
+      expect(handleDelete.callCount).to.equal(1);
+      expect(callOrder).to.deep.equal(['click', 'delete']);
+    });
+
+    it('does NOT fire for non-delete keys', () => {
+      const handleDelete = spy();
+      render(<Chip label="Chip" endAdornment={<ChipDelete onDelete={handleDelete} />} />);
+
+      const button = screen.getByRole('button');
+      act(() => {
+        button.focus();
+      });
+      fireEvent.keyDown(button, { key: 'a' });
+      expect(handleDelete.callCount).to.equal(0);
+    });
+
+    it('Backspace stopPropagation prevents parent keyDown handler', () => {
+      const handleParentKeyDown = spy();
+      render(
+        <div onKeyDown={handleParentKeyDown}>
+          <Chip label="Chip" endAdornment={<ChipDelete onDelete={() => {}} />} />
+        </div>,
+      );
+
+      const button = screen.getByRole('button');
+      act(() => {
+        button.focus();
+      });
+      fireEvent.keyDown(button, { key: 'Backspace' });
+      expect(handleParentKeyDown.callCount).to.equal(0);
     });
   });
 

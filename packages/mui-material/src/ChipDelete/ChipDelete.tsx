@@ -12,7 +12,7 @@ import capitalize from '../utils/capitalize';
 import useButtonBase from '../ButtonBase/useButtonBase';
 import useForkRef from '../utils/useForkRef';
 import ChipContext from '../Chip/ChipContext';
-import { omitControlledButtonProps } from '../Chip/utils';
+import { isDeleteKeyboardEvent, omitControlledButtonProps } from '../Chip/utils';
 import { getChipDeleteUtilityClass } from './chipDeleteClasses';
 import { getChipDeleteStyles } from '../Chip/chipSharedStyles';
 import type { ChipDeleteProps, ChipDeleteOwnerState, ChipDeleteTypeMap } from './ChipDelete.types';
@@ -86,6 +86,7 @@ const ChipDelete = React.forwardRef(function ChipDelete(
     nativeButton: nativeButtonProp,
     label = 'Remove',
     onClick,
+    onDelete,
     onFocus,
     onBlur,
     onKeyDown,
@@ -119,13 +120,26 @@ const ChipDelete = React.forwardRef(function ChipDelete(
     allowInferredHostMismatch: typeof component === 'string' || component === undefined,
     disabled,
     focusableWhenDisabled,
-    stopEventPropagation: true,
     tabIndex: other.tabIndex ?? 0,
   });
+  const handleClick: React.MouseEventHandler<HTMLElement> = (event) => {
+    onClick?.(event);
+    onDelete?.(event);
+  };
+
+  const handleKeyDown: React.KeyboardEventHandler<HTMLElement> = (event) => {
+    onKeyDown?.(event);
+    if (isDeleteKeyboardEvent(event)) {
+      event.preventDefault();
+      event.stopPropagation();
+      onDelete?.(event);
+    }
+  };
+
   const { type, ...buttonProps } = getButtonProps({
     ...omitControlledButtonProps(other),
-    onClick,
-    onKeyDown,
+    onClick: handleClick,
+    onKeyDown: handleKeyDown,
     onKeyUp,
   });
   const handleRef = useForkRef(ref, rootRef);
@@ -211,6 +225,12 @@ ChipDelete.propTypes /* remove-proptypes */ = {
    * @ignore
    */
   onClick: PropTypes.func,
+  /**
+   * Callback fired when the delete action is triggered.
+   * This fires on click, keyboard activation (Enter/Space), and when
+   * Backspace or Delete is pressed while the component has focus.
+   */
+  onDelete: PropTypes.func,
   /**
    * @ignore
    */

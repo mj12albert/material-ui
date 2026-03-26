@@ -9,11 +9,15 @@ import { useDefaultProps } from '../DefaultPropsProvider';
 import { getChipLinkUtilityClass } from './chipLinkClasses';
 import { TouchRippleComponent } from '../Chip/utils';
 import useChipInteraction from '../Chip/useChipInteraction';
-import ChipContext from '../Chip/ChipContext';
 import type { ChipLinkOwnerState, ChipLinkProps } from './ChipLink.types';
 import { getChipActionStyles } from '../Chip/chipSharedStyles';
 
 export type { ChipLinkOwnProps, ChipLinkProps } from './ChipLink.types';
+
+type ChipLinkInternalProps = ChipLinkProps & {
+  children?: React.ReactNode;
+  insideChip?: boolean | undefined;
+};
 
 const useUtilityClasses = (ownerState: ChipLinkOwnerState) => {
   const { classes } = ownerState;
@@ -29,7 +33,7 @@ const ChipLinkRoot = styled('a', {
   name: 'MuiChipLink',
   slot: 'Root',
   overridesResolver: (_props, styles) => styles.root,
-})<{ ownerState: ChipLinkOwnerState }>(memoTheme(() => getChipActionStyles()));
+})<{ ownerState: ChipLinkOwnerState }>(memoTheme(({ theme }) => getChipActionStyles(theme)));
 
 /**
  * An action overlay for the `Chip` component with link semantics.
@@ -54,10 +58,12 @@ const ChipLinkRoot = styled('a', {
  */
 const ChipLink = React.forwardRef<HTMLAnchorElement, ChipLinkProps>(
   function ChipLink(inProps, ref) {
-    const props = useDefaultProps({ props: inProps, name: 'MuiChipLink' });
+    const props = useDefaultProps({ props: inProps, name: 'MuiChipLink' }) as ChipLinkInternalProps;
     const {
+      children,
       className,
       href,
+      insideChip = false,
       onClick,
       onFocus,
       onBlur,
@@ -75,22 +81,14 @@ const ChipLink = React.forwardRef<HTMLAnchorElement, ChipLinkProps>(
       ...other
     } = props;
 
-    const chipContext = React.useContext(ChipContext);
-
     if (process.env.NODE_ENV !== 'production') {
-      if (chipContext.variant === undefined) {
+      if (!insideChip) {
         console.error('MUI: <ChipLink> must be used as the `action` prop of a <Chip> component.');
       }
     }
 
-    const { handleFocus, handleBlur, getRippleHandlers, enableTouchRipple, touchRippleRef } =
-      useChipInteraction({ onFocus, onBlur });
-
-    const ownerState: ChipLinkOwnerState = props;
-
-    const classes = useUtilityClasses(ownerState);
-
-    const rippleHandlers = getRippleHandlers({
+    const { handleBlur, rippleHandlers, enableTouchRipple, touchRippleRef } = useChipInteraction({
+      onBlur,
       onMouseDown,
       onMouseUp,
       onMouseLeave,
@@ -101,6 +99,10 @@ const ChipLink = React.forwardRef<HTMLAnchorElement, ChipLinkProps>(
       onContextMenu,
     });
 
+    const ownerState: ChipLinkOwnerState = props;
+
+    const classes = useUtilityClasses(ownerState);
+
     return (
       <ChipLinkRoot
         ref={ref}
@@ -108,14 +110,14 @@ const ChipLink = React.forwardRef<HTMLAnchorElement, ChipLinkProps>(
         ownerState={ownerState}
         href={href}
         onClick={onClick}
-        onFocus={handleFocus}
+        onFocus={onFocus}
         onBlur={handleBlur}
         onKeyDown={onKeyDown}
         onKeyUp={onKeyUp}
         {...other}
         {...rippleHandlers}
       >
-        {chipContext.labelElement}
+        {children}
         {enableTouchRipple ? <TouchRippleComponent ref={touchRippleRef} /> : null}
       </ChipLinkRoot>
     );

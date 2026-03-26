@@ -4,7 +4,7 @@
     "avatar": {
       "type": { "name": "element" },
       "deprecated": true,
-      "deprecationInfo": "Use <code>startAdornment</code> instead. Ignored when <code>startAdornment</code> is present."
+      "deprecationInfo": "Use <code>startAdornment</code> instead. Ignored when <code>startAdornment</code> or <code>action</code> are used."
     },
     "children": { "type": { "name": "custom", "description": "unsupportedProp" } },
     "classes": { "type": { "name": "object" }, "additionalInfo": { "cssApi": true } },
@@ -24,21 +24,21 @@
     "deleteIcon": {
       "type": { "name": "element" },
       "deprecated": true,
-      "deprecationInfo": "Use <code>endAdornment={&lt;ChipDelete /&gt;}</code> instead. Ignored when <code>endAdornment</code> is present."
+      "deprecationInfo": "Use <code>endAdornment={&lt;ChipDelete /&gt;}</code> instead. Ignored when <code>endAdornment</code> or <code>action</code> are used."
     },
     "disabled": { "type": { "name": "bool" }, "default": "false" },
     "endAdornment": { "type": { "name": "node" } },
     "icon": {
       "type": { "name": "element" },
       "deprecated": true,
-      "deprecationInfo": "Use <code>startAdornment</code> instead. Ignored when <code>startAdornment</code> is present."
+      "deprecationInfo": "Use <code>startAdornment</code> instead. Ignored when <code>startAdornment</code> or <code>action</code> are used."
     },
     "label": { "type": { "name": "node" } },
     "nativeButton": { "type": { "name": "bool" } },
     "onDelete": {
       "type": { "name": "func" },
       "deprecated": true,
-      "deprecationInfo": "Use <code>endAdornment={&lt;ChipDelete onClick={...} /&gt;}</code> instead. Ignored when <code>endAdornment</code> is present."
+      "deprecationInfo": "Use <code>endAdornment={&lt;ChipDelete onClick={...} /&gt;}</code> instead. Ignored when <code>endAdornment</code> or <code>action</code> are used."
     },
     "size": {
       "type": {

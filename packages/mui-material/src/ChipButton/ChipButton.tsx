@@ -12,12 +12,16 @@ import useButtonBase from '../ButtonBase/useButtonBase';
 import useForkRef from '../utils/useForkRef';
 import { omitControlledButtonProps, TouchRippleComponent } from '../Chip/utils';
 import useChipInteraction from '../Chip/useChipInteraction';
-import ChipContext from '../Chip/ChipContext';
 import type { ChipButtonOwnerState, ChipButtonProps, ChipButtonTypeMap } from './ChipButton.types';
 import type { OverridableComponent } from '../OverridableComponent';
 import { getChipActionStyles } from '../Chip/chipSharedStyles';
 
 export type { ChipButtonOwnProps, ChipButtonProps, ChipButtonTypeMap } from './ChipButton.types';
+
+type ChipButtonInternalProps = ChipButtonProps & {
+  children?: React.ReactNode;
+  insideChip?: boolean | undefined;
+};
 
 const useUtilityClasses = (ownerState: ChipButtonOwnerState) => {
   const { classes, disabled } = ownerState;
@@ -36,7 +40,7 @@ const ChipButtonRoot = styled('button', {
     const { ownerState } = props;
     return [styles.root, ownerState.disabled && styles.disabled];
   },
-})<{ ownerState: ChipButtonOwnerState }>(memoTheme(() => getChipActionStyles()));
+})<{ ownerState: ChipButtonOwnerState }>(memoTheme(({ theme }) => getChipActionStyles(theme)));
 
 /**
  * An action overlay for the `Chip` component with button semantics.
@@ -58,12 +62,17 @@ const ChipButton = React.forwardRef(function ChipButton(
   inProps: ChipButtonProps,
   ref: React.ForwardedRef<HTMLElement>,
 ) {
-  const props = useDefaultProps({ props: inProps, name: 'MuiChipButton' });
+  const props = useDefaultProps({
+    props: inProps,
+    name: 'MuiChipButton',
+  }) as ChipButtonInternalProps;
   const {
+    children,
     className,
     component,
     disabled: disabledProp,
     focusableWhenDisabled = true,
+    insideChip = false,
     nativeButton: nativeButtonProp,
     onClick,
     onFocus,
@@ -82,21 +91,29 @@ const ChipButton = React.forwardRef(function ChipButton(
     ...other
   } = props;
 
-  const chipContext = React.useContext(ChipContext);
-
   if (process.env.NODE_ENV !== 'production') {
-    if (chipContext.variant === undefined) {
+    if (!insideChip) {
       console.error('MUI: <ChipButton> must be used as the `action` prop of a <Chip> component.');
     }
   }
 
-  const disabled = disabledProp ?? chipContext.disabled ?? false;
+  const disabled = disabledProp ?? false;
 
   const defaultNativeButton = typeof component !== 'string' || component === 'button';
   const nativeButton = nativeButtonProp ?? defaultNativeButton;
 
-  const { handleFocus, handleBlur, getRippleHandlers, enableTouchRipple, touchRippleRef } =
-    useChipInteraction({ disabled, onFocus, onBlur });
+  const { handleBlur, rippleHandlers, enableTouchRipple, touchRippleRef } = useChipInteraction({
+    disabled,
+    onBlur,
+    onMouseDown,
+    onMouseUp,
+    onMouseLeave,
+    onDragLeave,
+    onTouchStart,
+    onTouchEnd,
+    onTouchMove,
+    onContextMenu,
+  });
 
   const { getButtonProps, rootRef } = useButtonBase({
     nativeButton,
@@ -123,30 +140,19 @@ const ChipButton = React.forwardRef(function ChipButton(
 
   const classes = useUtilityClasses(ownerState);
 
-  const rippleHandlers = getRippleHandlers({
-    onMouseDown,
-    onMouseUp,
-    onMouseLeave,
-    onDragLeave,
-    onTouchStart,
-    onTouchEnd,
-    onTouchMove,
-    onContextMenu,
-  });
-
   return (
     <ChipButtonRoot
       as={component}
       ref={handleRef}
       className={clsx(classes.root, className)}
       ownerState={ownerState}
-      onFocus={handleFocus}
+      onFocus={onFocus}
       onBlur={handleBlur}
       type={type as 'button' | 'reset' | 'submit' | undefined}
       {...buttonProps}
       {...rippleHandlers}
     >
-      {chipContext.labelElement}
+      {children}
       {enableTouchRipple ? <TouchRippleComponent ref={touchRippleRef} /> : null}
     </ChipButtonRoot>
   );
@@ -177,7 +183,7 @@ ChipButton.propTypes /* remove-proptypes */ = {
    */
   disabled: PropTypes.bool,
   /**
-   * If `true`, the disabled chip can receive focus.
+   * If `true`, the disabled button can receive focus.
    * @default true
    */
   focusableWhenDisabled: PropTypes.bool,

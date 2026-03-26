@@ -1,5 +1,6 @@
 import * as React from 'react';
-import TouchRipple, { TouchRippleActions, TouchRippleProps } from '../ButtonBase/TouchRipple';
+import TouchRipple from '../ButtonBase/TouchRipple';
+import type { TouchRippleActions, TouchRippleProps } from '../ButtonBase/TouchRipple';
 
 // TouchRipple.d.ts declares ForwardRefRenderFunction instead of ForwardRefExoticComponent.
 // Cast to the correct component type so it works as a JSX element.

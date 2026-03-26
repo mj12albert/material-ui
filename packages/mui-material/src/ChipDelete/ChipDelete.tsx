@@ -62,7 +62,7 @@ const ChipDeleteRoot = styled('button', {
  * A chip-aware delete button, designed to be used as an adornment of `Chip`.
  *
  * When rendered inside a `Chip`, it inherits `disabled`, `color`, `size`, and `variant`
- * from the chip context. Local props override context values.
+ * from the chip context.
  *
  * Demos:
  *
@@ -262,7 +262,7 @@ ChipDelete.propTypes /* remove-proptypes */ = {
  * A chip-aware delete button, designed to be used as an adornment of `Chip`.
  *
  * When rendered inside a `Chip`, it inherits `disabled`, `color`, `size`, and `variant`
- * from the chip context. Local props override context values.
+ * from the chip context.
  *
  * Demos:
  *

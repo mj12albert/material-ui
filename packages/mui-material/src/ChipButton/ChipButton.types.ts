@@ -16,7 +16,7 @@ export interface ChipButtonOwnProps {
    */
   disabled?: boolean | undefined;
   /**
-   * If `true`, the disabled chip can receive focus.
+   * If `true`, the disabled button can receive focus.
    * @default true
    */
   focusableWhenDisabled?: boolean | undefined;

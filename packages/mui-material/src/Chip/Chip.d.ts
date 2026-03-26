@@ -73,7 +73,7 @@ export interface ChipOwnProps {
   action?: React.ReactElement<unknown> | undefined;
   /**
    * The Avatar element to display.
-   * @deprecated Use `startAdornment` instead. Ignored when `startAdornment` is present.
+   * @deprecated Use `startAdornment` instead. Ignored when `startAdornment` or `action` are used.
    */
   avatar?: React.ReactElement<unknown> | undefined;
   /**
@@ -109,7 +109,7 @@ export interface ChipOwnProps {
     | undefined;
   /**
    * Override the default delete icon element. Shown only if `onDelete` is set.
-   * @deprecated Use `endAdornment={<ChipDelete />}` instead. Ignored when `endAdornment` is present.
+   * @deprecated Use `endAdornment={<ChipDelete />}` instead. Ignored when `endAdornment` or `action` are used.
    */
   deleteIcon?: React.ReactElement<unknown> | undefined;
   /**
@@ -125,7 +125,7 @@ export interface ChipOwnProps {
   endAdornment?: React.ReactNode | undefined;
   /**
    * Icon element.
-   * @deprecated Use `startAdornment` instead. Ignored when `startAdornment` is present.
+   * @deprecated Use `startAdornment` instead. Ignored when `startAdornment` or `action` are used.
    */
   icon?: React.ReactElement<unknown> | undefined;
   /**
@@ -135,7 +135,7 @@ export interface ChipOwnProps {
   /**
    * Callback fired when the delete icon is clicked.
    * If set, the delete icon will be shown.
-   * @deprecated Use `endAdornment={<ChipDelete onClick={...} />}` instead. Ignored when `endAdornment` is present.
+   * @deprecated Use `endAdornment={<ChipDelete onClick={...} />}` instead. Ignored when `endAdornment` or `action` are used.
    */
   onDelete?: React.EventHandler<any> | undefined;
   /**

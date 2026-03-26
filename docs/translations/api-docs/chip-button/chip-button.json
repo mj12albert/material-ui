@@ -10,7 +10,7 @@
       "description": "If <code>true</code>, the component is disabled. When nested inside a <code>Chip</code>, inherits from the parent&#39;s <code>disabled</code> prop."
     },
     "focusableWhenDisabled": {
-      "description": "If <code>true</code>, the disabled chip can receive focus."
+      "description": "If <code>true</code>, the disabled button can receive focus."
     },
     "nativeButton": {
       "description": "If <code>true</code>, the component is expected to resolve to a native <code>&lt;button&gt;</code> element. When omitted, native button semantics are inferred when <code>component</code> is <code>&#39;button&#39;</code> or absent. Set explicitly when using a custom <code>component</code> that resolves to a native <code>&lt;button&gt;</code>."

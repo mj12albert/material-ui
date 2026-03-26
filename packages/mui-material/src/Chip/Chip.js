@@ -386,10 +386,6 @@ const ChipNewApiRoot = styled('div', {
     });
     return {
       ...baseStyles,
-      [`&.${chipClasses.disabled}`]: {
-        opacity: (theme.vars || theme).palette.action.disabledOpacity,
-        pointerEvents: 'none',
-      },
       variants: [
         ...baseStyles.variants,
         {
@@ -485,38 +481,59 @@ const Chip = React.forwardRef(function Chip(inProps, ref) {
   } = props;
   const { nativeButton, ...buttonBaseProps } = other;
 
+  const hasAction = action != null;
+  const hasAdornment = startAdornment != null || endAdornment != null;
+  const hasLegacyInteraction = onClick || clickableProp !== undefined;
+  const hasLegacyVisual = avatarProp || iconProp;
+  const hasLegacyDelete = deleteIconProp || onDelete;
+  const actionMuiName = action?.type?.muiName;
+  const isChipLinkAction = actionMuiName === 'ChipLink';
+  const isValidChipAction = actionMuiName === 'ChipButton' || isChipLinkAction;
+
   // Detect new slot-based API (loose null check so `null` from ternaries is treated as absent)
-  const isNewApi = action != null || startAdornment != null || endAdornment != null;
+  const usesNewApiProps = hasAction || hasAdornment;
 
   // Dev warnings for new API
   if (process.env.NODE_ENV !== 'production') {
-    if (isNewApi) {
-      if (
-        action &&
-        action.type &&
-        action.type.muiName !== 'ChipButton' &&
-        action.type.muiName !== 'ChipLink'
-      ) {
+    if (usesNewApiProps) {
+      if (hasAction && !isValidChipAction) {
+        console.error('MUI: The `action` prop expects a `<ChipButton>` or `<ChipLink>` component.');
+      }
+      if (hasAction && hasLegacyInteraction) {
         console.error(
-          'MUI: The Chip `action` prop expects a `<ChipButton>` or `<ChipLink>` element.',
+          'MUI: The `onClick` and `clickable` props are incompatible with the `action` prop. ' +
+            'Pass event handlers directly to the `action` component instead.',
         );
       }
-      if (action && (onClick || clickableProp !== undefined)) {
+      if (hasAdornment && onDelete) {
         console.error(
-          'MUI: When `action` is provided, `onClick` and `clickable` are ignored. ' +
-            'Pass event handlers directly to the action element.',
-        );
-      }
-      if ((startAdornment || endAdornment) && onDelete) {
-        console.error(
-          'MUI: When `startAdornment` or `endAdornment` is provided, `onDelete` is ignored. ' +
+          'MUI: The `onDelete` prop is incompatible with the `startAdornment` and `endAdornment` props. ' +
             'Use `<ChipDelete>` as an adornment instead.',
         );
       }
-      if (startAdornment && (avatarProp || iconProp)) {
+      if (startAdornment && hasLegacyVisual) {
         console.error(
-          'MUI: When `startAdornment` is provided, `avatar` and `icon` are ignored. ' +
-            'Place content directly inside `startAdornment`.',
+          'MUI: The `avatar` and `icon` props are incompatible with the `startAdornment` prop. ' +
+            'Pass avatars or icons to `startAdornment` instead.',
+        );
+      }
+      if (hasAction && hasLegacyVisual) {
+        console.error(
+          'MUI: The `avatar` and `icon` props are incompatible with the `action` prop. ' +
+            'Use `startAdornment` and `endAdornment` instead.',
+        );
+      }
+      if (hasAction && hasLegacyDelete) {
+        console.error(
+          'MUI: The `deleteIcon` and `onDelete` props are incompatible with the `action` prop. ' +
+            'Use the `<ChipDelete>` component instead.',
+        );
+      }
+      if (!hasAction && hasAdornment && hasLegacyInteraction) {
+        console.error(
+          'MUI: The `onClick` and `clickable` props have no effect when `startAdornment` or ' +
+            '`endAdornment` is provided without `action`. ' +
+            'Use `action={<ChipButton onClick={...} />}` to make the chip interactive.',
         );
       }
     }
@@ -524,7 +541,7 @@ const Chip = React.forwardRef(function Chip(inProps, ref) {
 
   const handleKeyDown = (event) => {
     // Legacy-only handler: new API delegates keyboard handling to the action element.
-    if (isNewApi) {
+    if (usesNewApiProps) {
       return;
     }
 
@@ -542,7 +559,7 @@ const Chip = React.forwardRef(function Chip(inProps, ref) {
 
   const handleKeyUp = (event) => {
     // Legacy-only handler: new API delegates keyboard handling to the action element.
-    if (isNewApi) {
+    if (usesNewApiProps) {
       return;
     }
 
@@ -562,11 +579,10 @@ const Chip = React.forwardRef(function Chip(inProps, ref) {
   const component = clickable || onDelete ? ButtonBase : ComponentProp || 'div';
 
   // ChipLink ignores disabled — suppress disabled styles on the root when action is ChipLink
-  const isChipLink = action && action.type && action.type.muiName === 'ChipLink';
-  const rootDisabled = isChipLink ? false : disabled;
+  const rootDisabled = isChipLinkAction ? false : disabled;
 
   // ownerState differs by API path
-  const ownerState = isNewApi
+  const ownerState = usesNewApiProps
     ? {
         ...props,
         color,
@@ -588,7 +604,7 @@ const Chip = React.forwardRef(function Chip(inProps, ref) {
         variant,
       };
 
-  const classes = useUtilityClasses(ownerState, isNewApi);
+  const classes = useUtilityClasses(ownerState, usesNewApiProps);
 
   const moreProps =
     component === ButtonBase
@@ -608,16 +624,16 @@ const Chip = React.forwardRef(function Chip(inProps, ref) {
 
   // useSlot calls with conditional params (always called, per rules of hooks)
   const [RootSlot, rootProps] = useSlot('root', {
-    elementType: isNewApi ? ChipNewApiRoot : ChipRoot,
+    elementType: usesNewApiProps ? ChipNewApiRoot : ChipRoot,
     externalForwardedProps: {
       ...externalForwardedProps,
       ...buttonBaseProps,
     },
     ownerState,
-    shouldForwardComponentProp: !isNewApi,
+    shouldForwardComponentProp: !usesNewApiProps,
     ref,
     className: clsx(classes.root, className),
-    ...(isNewApi
+    ...(usesNewApiProps
       ? {}
       : {
           additionalProps: {
@@ -649,10 +665,7 @@ const Chip = React.forwardRef(function Chip(inProps, ref) {
     ownerState,
     className: classes.label,
   });
-  const labelElement = React.useMemo(
-    () => <LabelSlot {...labelProps}>{label}</LabelSlot>,
-    [LabelSlot, labelProps, label],
-  );
+  const labelElement = <LabelSlot {...labelProps}>{label}</LabelSlot>;
 
   const [StartAdornmentSlot, startAdornmentSlotProps] = useSlot('startAdornment', {
     elementType: ChipStartAdornment,
@@ -672,28 +685,45 @@ const Chip = React.forwardRef(function Chip(inProps, ref) {
     () => ({
       color,
       disabled,
-      labelElement,
       size,
       variant,
     }),
-    [color, disabled, labelElement, size, variant],
+    [color, disabled, size, variant],
   );
 
   // ---- New API render path ----
-  if (isNewApi) {
-    return (
-      <ChipContext.Provider value={chipContextValue}>
-        <RootSlot as={ComponentProp} {...rootProps}>
-          {startAdornment ? (
-            <StartAdornmentSlot {...startAdornmentSlotProps}>{startAdornment}</StartAdornmentSlot>
-          ) : null}
-          {action || labelElement}
-          {endAdornment ? (
-            <EndAdornmentSlot {...endAdornmentSlotProps}>{endAdornment}</EndAdornmentSlot>
-          ) : null}
-        </RootSlot>
-      </ChipContext.Provider>
+  if (usesNewApiProps) {
+    const actionElement =
+      hasAction && React.isValidElement(action) && isValidChipAction
+        ? React.cloneElement(
+            action,
+            {
+              insideChip: true,
+              ...(actionMuiName === 'ChipButton' && {
+                disabled: action.props.disabled ?? disabled,
+              }),
+            },
+            labelElement,
+          )
+        : action;
+
+    const content = (
+      <RootSlot as={ComponentProp} {...rootProps}>
+        {startAdornment ? (
+          <StartAdornmentSlot {...startAdornmentSlotProps}>{startAdornment}</StartAdornmentSlot>
+        ) : null}
+        {actionElement || labelElement}
+        {endAdornment ? (
+          <EndAdornmentSlot {...endAdornmentSlotProps}>{endAdornment}</EndAdornmentSlot>
+        ) : null}
+      </RootSlot>
     );
+
+    if (!hasAdornment) {
+      return content;
+    }
+
+    return <ChipContext.Provider value={chipContextValue}>{content}</ChipContext.Provider>;
   }
 
   // ---- Legacy render path ----
@@ -742,7 +772,7 @@ const Chip = React.forwardRef(function Chip(inProps, ref) {
   return (
     <RootSlot as={component} {...rootProps}>
       {avatar || icon}
-      <LabelSlot {...labelProps}>{label}</LabelSlot>
+      {labelElement}
       {deleteIcon}
     </RootSlot>
   );
@@ -762,7 +792,7 @@ Chip.propTypes /* remove-proptypes */ = {
   action: PropTypes.element,
   /**
    * The Avatar element to display.
-   * @deprecated Use `startAdornment` instead. Ignored when `startAdornment` is present.
+   * @deprecated Use `startAdornment` instead. Ignored when `startAdornment` or `action` are used.
    */
   avatar: PropTypes.element,
   /**
@@ -805,7 +835,7 @@ Chip.propTypes /* remove-proptypes */ = {
   component: PropTypes.elementType,
   /**
    * Override the default delete icon element. Shown only if `onDelete` is set.
-   * @deprecated Use `endAdornment={<ChipDelete />}` instead. Ignored when `endAdornment` is present.
+   * @deprecated Use `endAdornment={<ChipDelete />}` instead. Ignored when `endAdornment` or `action` are used.
    */
   deleteIcon: PropTypes.element,
   /**
@@ -821,7 +851,7 @@ Chip.propTypes /* remove-proptypes */ = {
   endAdornment: PropTypes.node,
   /**
    * Icon element.
-   * @deprecated Use `startAdornment` instead. Ignored when `startAdornment` is present.
+   * @deprecated Use `startAdornment` instead. Ignored when `startAdornment` or `action` are used.
    */
   icon: PropTypes.element,
   /**
@@ -842,7 +872,7 @@ Chip.propTypes /* remove-proptypes */ = {
   /**
    * Callback fired when the delete icon is clicked.
    * If set, the delete icon will be shown.
-   * @deprecated Use `endAdornment={<ChipDelete onClick={...} />}` instead. Ignored when `endAdornment` is present.
+   * @deprecated Use `endAdornment={<ChipDelete onClick={...} />}` instead. Ignored when `endAdornment` or `action` are used.
    */
   onDelete: PropTypes.func,
   /**

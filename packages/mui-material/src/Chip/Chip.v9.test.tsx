@@ -1,12 +1,20 @@
 import * as React from 'react';
 import { expect } from 'chai';
-import { createRenderer, screen } from '@mui/internal-test-utils';
+import {
+  createRenderer,
+  focusVisible,
+  isJsdom,
+  screen,
+  strictModeDoubleLoggingSuppressed,
+} from '@mui/internal-test-utils';
 import Chip, { chipClasses as classes } from '@mui/material/Chip';
 import ChipButton from '@mui/material/ChipButton';
 import ChipDelete from '@mui/material/ChipDelete';
 import ChipLink from '@mui/material/ChipLink';
+import { hexToRgb } from '@mui/material/styles';
 import Avatar from '@mui/material/Avatar';
 import CheckBox from '../internal/svg-icons/CheckBox';
+import defaultTheme from '../styles/defaultTheme';
 
 /**
  * Tests for the new Chip API surface:
@@ -148,19 +156,39 @@ describe('<Chip /> new API', () => {
     });
   });
 
+  describe('focus', () => {
+    it.skipIf(isJsdom())('uses the primary focus ring color for actionable primary chips', () => {
+      render(<Chip color="primary" label="Chip" action={<ChipButton onClick={() => {}} />} />);
+
+      const button = screen.getByRole('button');
+      const chip = button.parentElement;
+
+      focusVisible(button);
+
+      expect(chip).toHaveComputedStyle({
+        outlineColor: hexToRgb(defaultTheme.palette.primary.main),
+      });
+    });
+  });
+
   describe('warnings', () => {
     it('warns when action receives a non-ChipButton/ChipLink element', () => {
       expect(() => {
         render(<Chip label="Chip" action={<button type="button">click</button>} />);
-      }).toErrorDev(
-        'MUI: The Chip `action` prop expects a `<ChipButton>` or `<ChipLink>` element.',
-      );
+      }).toErrorDev([
+        'MUI: The `action` prop expects a `<ChipButton>` or `<ChipLink>` component.',
+        !strictModeDoubleLoggingSuppressed &&
+          'MUI: The `action` prop expects a `<ChipButton>` or `<ChipLink>` component.',
+      ]);
     });
 
-    const onDeleteAdornmentWarning = Array(2).fill(
-      'MUI: When `startAdornment` or `endAdornment` is provided, `onDelete` is ignored. ' +
+    const onDeleteAdornmentWarning = [
+      'MUI: The `onDelete` prop is incompatible with the `startAdornment` and `endAdornment` props. ' +
         'Use `<ChipDelete>` as an adornment instead.',
-    );
+      !strictModeDoubleLoggingSuppressed &&
+        'MUI: The `onDelete` prop is incompatible with the `startAdornment` and `endAdornment` props. ' +
+          'Use `<ChipDelete>` as an adornment instead.',
+    ];
 
     it('warns when startAdornment is mixed with onDelete', () => {
       expect(() => {
@@ -178,6 +206,34 @@ describe('<Chip /> new API', () => {
       expect(() => {
         render(<Chip label="Chip" startAdornment={<ChipDelete />} endAdornment={<ChipDelete />} />);
       }).not.toErrorDev();
+    });
+
+    it('warns when adornments are used with onClick but no action', () => {
+      expect(() => {
+        render(<Chip label="Chip" startAdornment={<ChipDelete />} onClick={() => {}} />);
+      }).toErrorDev([
+        'MUI: The `onClick` and `clickable` props have no effect when `startAdornment` or ' +
+          '`endAdornment` is provided without `action`. ' +
+          'Use `action={<ChipButton onClick={...} />}` to make the chip interactive.',
+        !strictModeDoubleLoggingSuppressed &&
+          'MUI: The `onClick` and `clickable` props have no effect when `startAdornment` or ' +
+            '`endAdornment` is provided without `action`. ' +
+            'Use `action={<ChipButton onClick={...} />}` to make the chip interactive.',
+      ]);
+    });
+
+    it('warns when adornments are used with clickable but no action', () => {
+      expect(() => {
+        render(<Chip label="Chip" endAdornment={<ChipDelete />} clickable />);
+      }).toErrorDev([
+        'MUI: The `onClick` and `clickable` props have no effect when `startAdornment` or ' +
+          '`endAdornment` is provided without `action`. ' +
+          'Use `action={<ChipButton onClick={...} />}` to make the chip interactive.',
+        !strictModeDoubleLoggingSuppressed &&
+          'MUI: The `onClick` and `clickable` props have no effect when `startAdornment` or ' +
+            '`endAdornment` is provided without `action`. ' +
+            'Use `action={<ChipButton onClick={...} />}` to make the chip interactive.',
+      ]);
     });
   });
 });

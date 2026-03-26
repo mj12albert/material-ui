@@ -4,7 +4,6 @@ import * as React from 'react';
 export interface ChipContextType {
   color?: string | undefined;
   disabled?: boolean | undefined;
-  labelElement?: React.ReactNode;
   size?: string | undefined;
   variant?: string | undefined;
 }

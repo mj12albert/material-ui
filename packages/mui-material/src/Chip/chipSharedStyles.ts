@@ -214,7 +214,7 @@ export function getChipRootStyles(theme: Theme, classes: ChipRootClassRefs) {
  * contains the label text.  A `::after` pseudo-element stretches the click
  * target to cover the entire chip root (`position: relative`).
  */
-export function getChipActionStyles() {
+export function getChipActionStyles(theme: Theme) {
   return {
     position: 'static' as const,
     display: 'inline-flex',
@@ -244,7 +244,7 @@ export function getChipActionStyles() {
     // Fallback focus ring on the stretched pseudo-element.
     // Visible only when the Chip root's :has()-based focus styles are overridden or absent.
     '&:focus-visible::after': {
-      outline: '2px solid currentColor',
+      outline: `2px solid ${(theme.vars || theme).palette.primary.main}`,
       outlineOffset: 2,
     },
   };

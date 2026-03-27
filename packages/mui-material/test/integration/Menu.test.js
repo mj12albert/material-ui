@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { expect } from 'chai';
 import { act, createRenderer, fireEvent, screen } from '@mui/internal-test-utils';
 import Button from '@mui/material/Button';
+import Divider from '@mui/material/Divider';
 import MenuItem from '@mui/material/MenuItem';
 import Menu from '@mui/material/Menu';
 
@@ -122,6 +123,23 @@ describe('<Menu /> integration', () => {
 
     fireEvent.keyDown(menuitems[2], { key: 'ArrowRight' });
     expect(menuitems[2], 'no change on unassociated keys').toHaveFocus();
+  });
+
+  it('supports keyboard navigation after opening with click only', async () => {
+    render(<ButtonMenu />);
+
+    await act(async () => {
+      screen.getByRole('button', { name: 'open menu' }).click();
+    });
+
+    const menuitems = screen.getAllByRole('menuitem');
+    expect(menuitems[0]).toHaveFocus();
+
+    fireEvent.keyDown(menuitems[0], { key: 'ArrowDown' });
+    expect(menuitems[1]).toHaveFocus();
+
+    fireEvent.keyDown(menuitems[1], { key: 'ArrowUp' });
+    expect(menuitems[0]).toHaveFocus();
   });
 
   it('focuses the selected item when opening', async () => {
@@ -310,6 +328,55 @@ describe('<Menu /> integration', () => {
       expect(menuitems[1]).to.have.property('tabIndex', 0);
       expect(menuitems[2]).to.have.property('tabIndex', -1);
     });
+  });
+
+  it('skips Divider during keyboard navigation', async () => {
+    function ButtonMenuWithDivider() {
+      const [anchorEl, setAnchorEl] = React.useState(null);
+      const open = Boolean(anchorEl);
+
+      return (
+        <div>
+          <Button
+            aria-haspopup="true"
+            aria-label="open menu"
+            onClick={(event) => setAnchorEl(event.currentTarget)}
+          >
+            Open
+          </Button>
+          <Menu
+            anchorEl={anchorEl}
+            open={open}
+            onClose={() => setAnchorEl(null)}
+            transitionDuration={0}
+          >
+            <MenuItem>Item 1</MenuItem>
+            <Divider />
+            <MenuItem>Item 2</MenuItem>
+            <MenuItem>Item 3</MenuItem>
+          </Menu>
+        </div>
+      );
+    }
+
+    render(<ButtonMenuWithDivider />);
+
+    const button = screen.getByRole('button', { name: 'open menu' });
+    await act(async () => {
+      button.focus();
+      button.click();
+    });
+
+    const menuitems = screen.getAllByRole('menuitem');
+    expect(menuitems[0]).toHaveFocus();
+
+    fireEvent.keyDown(menuitems[0], { key: 'ArrowDown' });
+    expect(menuitems[1]).toHaveFocus();
+
+    fireEvent.keyDown(menuitems[1], { key: 'ArrowDown' });
+    expect(menuitems[2]).toHaveFocus();
+
+    expect(screen.getByRole('separator')).not.to.have.attribute('tabIndex');
   });
 
   it('closes the menu when Tabbing while the list is active', async () => {

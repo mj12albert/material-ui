@@ -4,20 +4,62 @@ import * as React from 'react';
 
 import ownerDocument from '../ownerDocument';
 import getActiveElement from '../getActiveElement';
+import setRef from '../setRef';
+import useEnhancedEffect from '../useEnhancedEffect';
+import useEventCallback from '../useEventCallback';
+import useForkRef from '../useForkRef';
 
-export type UseRovingTabIndexOptions = {
-  focusableIndex?: number | undefined;
+export interface RovingTabIndexItem<Key = unknown> {
+  id: Key;
+  ref?: React.Ref<HTMLElement> | undefined;
+  disabled?: boolean | undefined;
+  focusableWhenDisabled?: boolean | undefined;
+  textValue?: string | undefined;
+  selected?: boolean | undefined;
+}
+
+export interface RegisteredRovingTabIndexItem<Key = unknown> {
+  id: Key;
+  element: HTMLElement | null;
+  disabled: boolean;
+  focusableWhenDisabled: boolean;
+  textValue?: string | undefined;
+  selected: boolean;
+}
+
+export interface UseRovingTabIndexOptions<Key = unknown> {
+  activeItemId?: Key | null | undefined;
+  getDefaultActiveItemId?: ((items: RegisteredRovingTabIndexItem<Key>[]) => Key | null) | undefined;
   orientation: 'horizontal' | 'vertical';
   isRtl?: boolean | undefined;
-  shouldFocus?: ((element: HTMLElement | null) => boolean) | undefined;
+  isItemFocusable?: ((item: RegisteredRovingTabIndexItem<Key>) => boolean) | undefined;
   shouldWrap?: boolean | undefined;
-};
+}
 
-type UseRovingTabIndexReturn = {
-  getItemProps: (
-    index: number,
-    ref?: React.Ref<HTMLElement>,
-  ) => {
+export interface UseRovingTabIndexRootReturn<Key = unknown> {
+  activeItemId: Key | null;
+  focusActiveItem: () => Key | null;
+  focusNext: (
+    isItemFocusableOverride?: (item: RegisteredRovingTabIndexItem<Key>) => boolean,
+  ) => Key | null;
+  getActiveItem: () => RegisteredRovingTabIndexItem<Key> | null;
+  getContainerProps: (ref?: React.Ref<HTMLElement>) => {
+    onFocus: (event: React.FocusEvent<HTMLElement>) => void;
+    onKeyDown: (event: React.KeyboardEvent<HTMLElement>) => void;
+    ref: (element: HTMLElement | null) => void;
+  };
+  getItemMap: () => Map<Key, RegisteredRovingTabIndexItem<Key>>;
+  isItemActive: (itemId: Key) => boolean;
+  registerItem: (item: RegisteredRovingTabIndexItem<Key>) => void;
+  setActiveItemId: (itemId: Key | null) => void;
+  unregisterItem: (itemId: Key) => void;
+}
+
+interface UseRovingTabIndexReturn<Key = unknown> {
+  activeItemId: Key | null;
+  getActiveItem: () => RegisteredRovingTabIndexItem<Key> | null;
+  getItemMap: () => Map<Key, RegisteredRovingTabIndexItem<Key>>;
+  getItemProps: (item: RovingTabIndexItem<Key>) => {
     ref: (element: HTMLElement | null) => void;
     tabIndex: number;
   };
@@ -26,88 +68,204 @@ type UseRovingTabIndexReturn = {
     onKeyDown: (event: React.KeyboardEvent<HTMLElement>) => void;
     ref: (element: HTMLElement | null) => void;
   };
-  focusNext: (shouldSkipFocusOverride?: (element: HTMLElement | null) => boolean) => number;
-};
+  focusNext: (
+    isItemFocusableOverride?: (item: RegisteredRovingTabIndexItem<Key>) => boolean,
+  ) => Key | null;
+}
+
+export interface UseRovingTabIndexItemReturn {
+  onFocus: (event: React.FocusEvent<HTMLElement>) => void;
+  ref: React.RefCallback<HTMLElement | null>;
+  tabIndex: number;
+}
 
 const SUPPORTED_KEYS = ['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
 
+export const RovingTabIndexContext = React.createContext<UseRovingTabIndexRootReturn<any> | null>(
+  null,
+);
+
+if (process.env.NODE_ENV !== 'production') {
+  RovingTabIndexContext.displayName = 'RovingTabIndexContext';
+}
+
+export const RovingTabIndexProvider = RovingTabIndexContext.Provider;
+
 /**
- * Provides roving tab index behavior for a container and its focusable children.
+ * Provides roving tab index behavior for a composite container and its focusable children.
  * This is useful for implementing keyboard navigation in components like menus, tabs, and lists.
  * The hook manages the focus state of child elements and provides props to be spread on both the container and the items.
  * The container will handle keyboard events to move focus between items based on the specified orientation and wrapping behavior.
  *
- * @param options - Configuration options for the roving tab index behavior, including orientation, initial focusable index, RTL support, and custom focus logic.
- * @returns An object containing `getItemProps` and `getContainerProps` functions to be spread on the respective elements, and a `focusNext` function to programmatically move focus to the next item.
+ * @param options Configuration for the roving set.
+ * `activeItemId` synchronizes the active item when its value changes.
+ * `getDefaultActiveItemId` picks the fallback active item when there is no requested item.
+ * `isItemFocusable` filters registered items out of keyboard navigation without removing them from the map.
+ * @returns An object containing:
+ * - `activeItemId`: the resolved active item id for the current render.
+ * - `getActiveItem`: a getter for the current active item record.
+ * - `getItemMap`: a getter for the registered item map.
+ * - `getItemProps`: item props that opt an element into the roving set.
+ * - `getContainerProps`: container props that enable roving keyboard handling.
+ * - `focusNext`: an imperative helper that moves focus to the next matching item.
  */
-export default function useRovingTabIndex(
-  options: UseRovingTabIndexOptions,
-): UseRovingTabIndexReturn {
+export function useRovingTabIndexRoot<Key = unknown>(
+  options: UseRovingTabIndexOptions<Key>,
+): UseRovingTabIndexRootReturn<Key> {
   const {
+    activeItemId: activeItemIdProp,
+    getDefaultActiveItemId,
     orientation,
-    focusableIndex: focusableIndexProp,
     isRtl = false,
-    shouldFocus = internalShouldFocus,
+    isItemFocusable = isRovingTabIndexItemFocusable,
     shouldWrap = true,
   } = options;
 
-  const initialFocusableIndex = focusableIndexProp ?? 0;
+  const [activeItemIdState, setActiveItemIdState] = React.useState<Key | null | undefined>(
+    activeItemIdProp,
+  );
 
-  const [focusableIndex, setFocusableIndex] = React.useState(initialFocusableIndex);
+  const previousActiveItemIdPropRef = React.useRef<Key | null | undefined>(activeItemIdProp);
+  let activeItemIdCandidate = activeItemIdState;
 
-  const elementsRef = React.useRef<(HTMLElement | null)[]>([]);
-  const containerRef = React.useRef<HTMLElement | null>(null);
-  const previousFocusableIndexPropRef = React.useRef<number | undefined>(initialFocusableIndex);
+  if (activeItemIdProp !== previousActiveItemIdPropRef.current) {
+    previousActiveItemIdPropRef.current = activeItemIdProp;
 
-  if (
-    focusableIndexProp !== undefined &&
-    focusableIndexProp !== previousFocusableIndexPropRef.current
-  ) {
-    previousFocusableIndexPropRef.current = focusableIndexProp;
-
-    if (focusableIndexProp !== focusableIndex) {
-      setFocusableIndex(focusableIndexProp);
+    if (activeItemIdProp !== undefined && activeItemIdProp !== activeItemIdState) {
+      activeItemIdCandidate = activeItemIdProp;
+      setActiveItemIdState(activeItemIdProp);
     }
   }
 
-  React.useEffect(() => {
-    if (
-      elementsRef.current.length === 0 ||
-      focusableIndex === -1 ||
-      focusableIndex >= elementsRef.current.length
-    ) {
+  const itemMapRef = React.useRef<Map<Key, RegisteredRovingTabIndexItem<Key>>>(new Map());
+  const navigableItemsRef = React.useRef<RegisteredRovingTabIndexItem<Key>[]>([]);
+  const containerRef = React.useRef<HTMLElement | null>(null);
+  const [mapTick, setMapTick] = React.useState(0);
+
+  // `mapTick` is only an invalidation signal. The source of truth stays in the stable item map.
+  const orderedItems = React.useMemo(() => {
+    void mapTick;
+    return getOrderedItems(itemMapRef.current);
+  }, [mapTick]);
+
+  const navigableItems = React.useMemo(() => {
+    return orderedItems.filter(isConnectedItem);
+  }, [orderedItems]);
+  navigableItemsRef.current = navigableItems;
+
+  const resolvedActiveItemId = resolveActiveItemId({
+    activeItemId: activeItemIdCandidate,
+    items: orderedItems,
+    isItemFocusable,
+    getDefaultActiveItemId,
+  });
+
+  const activeItemIdRef = React.useRef<Key | null>(resolvedActiveItemId);
+  activeItemIdRef.current = resolvedActiveItemId;
+
+  const getNavigableItemsSnapshot = React.useCallback(() => {
+    const liveNavigableItems = getOrderedItems(itemMapRef.current).filter(isConnectedItem);
+    navigableItemsRef.current = liveNavigableItems;
+
+    return liveNavigableItems;
+  }, []);
+
+  const getActiveItem = React.useCallback(() => {
+    const liveOrderedItems = getOrderedItems(itemMapRef.current);
+    const liveActiveItemId = resolveActiveItemId({
+      activeItemId: activeItemIdRef.current,
+      items: liveOrderedItems,
+      isItemFocusable,
+      getDefaultActiveItemId,
+    });
+
+    return getItemById(liveOrderedItems, liveActiveItemId);
+  }, [getDefaultActiveItemId, isItemFocusable]);
+
+  const getItemMap = React.useCallback(() => {
+    return itemMapRef.current;
+  }, []);
+
+  const registerItem = useEventCallback((item: RegisteredRovingTabIndexItem<Key>) => {
+    const previousItem = itemMapRef.current.get(item.id);
+
+    if (areItemsEquivalent(previousItem, item)) {
       return;
     }
 
-    if (!shouldFocus(elementsRef.current[focusableIndex])) {
-      const nextIndex = focusNext(elementsRef, focusableIndex, 'next', false, shouldFocus);
+    itemMapRef.current.set(item.id, item);
+    setMapTick((value) => value + 1);
+  });
 
-      setFocusableIndex(nextIndex);
+  const unregisterItem = useEventCallback((itemId: Key) => {
+    if (itemMapRef.current.delete(itemId)) {
+      setMapTick((value) => value + 1);
     }
-  }, [focusableIndex, shouldFocus]);
+  });
 
-  const getItemProps = React.useCallback(
-    (index: number, ref?: React.Ref<HTMLElement>) => ({
-      ref: handleRefs(ref, (elementNode) => {
-        elementsRef.current[index] = elementNode;
-      }),
-      tabIndex: index === focusableIndex ? 0 : -1,
-    }),
-    [focusableIndex],
+  const setActiveItemId = useEventCallback((itemId: Key | null) => {
+    setActiveItemIdState(itemId);
+  });
+
+  const isItemActive = React.useCallback((itemId: Key) => {
+    return activeItemIdRef.current === itemId;
+  }, []);
+
+  const focusItem = React.useCallback(
+    (
+      currentIndex: number,
+      direction: 'next' | 'previous',
+      wrap: boolean,
+      isItemFocusableOverride?: (item: RegisteredRovingTabIndexItem<Key>) => boolean,
+    ) => {
+      const navigableItemsSnapshot = getNavigableItemsSnapshot();
+      const nextItem = getNextActiveItem(
+        navigableItemsSnapshot,
+        currentIndex,
+        direction,
+        wrap,
+        isItemFocusableOverride ?? isItemFocusable,
+      );
+
+      if (!nextItem) {
+        return null;
+      }
+
+      nextItem.element?.focus();
+      setActiveItemIdState(nextItem.id);
+
+      return nextItem;
+    },
+    [getNavigableItemsSnapshot, isItemFocusable],
   );
+
+  const focusActiveItem = React.useCallback(() => {
+    const activeItem = getActiveItem();
+
+    if (!activeItem?.element) {
+      return null;
+    }
+
+    activeItem.element.focus();
+    setActiveItemIdState(activeItem.id);
+
+    return activeItem.id;
+  }, [getActiveItem]);
 
   const getContainerProps = React.useCallback(
     (ref?: React.Ref<HTMLElement>) => {
       const onFocus = (event: React.FocusEvent<HTMLElement>) => {
-        const focusedElement = event.target;
-        const focusedIndex = elementsRef.current.findIndex((element) => element === focusedElement);
+        const focusedIndex = findItemIndexByElement(
+          getNavigableItemsSnapshot(),
+          event.target as HTMLElement,
+        );
 
         if (focusedIndex !== -1) {
-          setFocusableIndex(focusedIndex);
+          setActiveItemIdState(navigableItemsRef.current[focusedIndex].id);
         }
       };
 
-      const onKeyDown = (event: React.KeyboardEvent<HTMLElement | null>) => {
+      const onKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
         if (event.altKey || event.shiftKey || event.ctrlKey || event.metaKey) {
           return;
         }
@@ -120,15 +278,19 @@ export default function useRovingTabIndex(
         let nextItemKey = orientation === 'horizontal' ? 'ArrowRight' : 'ArrowDown';
 
         if (orientation === 'horizontal' && isRtl) {
-          // swap previousItemKey with nextItemKey
           previousItemKey = 'ArrowRight';
           nextItemKey = 'ArrowLeft';
         }
 
+        const navigableItemsSnapshot = getNavigableItemsSnapshot();
         const currentFocus = getActiveElement(ownerDocument(containerRef.current));
         const isFocusOnContainer = currentFocus === containerRef.current;
+        let currentIndex = getCurrentActiveItemIndex(
+          navigableItemsSnapshot,
+          currentFocus,
+          activeItemIdRef.current,
+        );
         let direction: 'next' | 'previous' = 'next';
-        let currentIndex = focusableIndex;
 
         switch (event.key) {
           case previousItemKey:
@@ -136,34 +298,30 @@ export default function useRovingTabIndex(
             event.preventDefault();
 
             if (isFocusOnContainer) {
-              // Set to length, so that the previous focused element will be the last one.
-              currentIndex = elementsRef.current.length;
+              currentIndex = navigableItemsSnapshot.length;
             }
             break;
           case nextItemKey:
             event.preventDefault();
 
             if (isFocusOnContainer) {
-              // Set to -1, so that the next focused element will be the first one.
               currentIndex = -1;
             }
             break;
           case 'Home':
             event.preventDefault();
-            // Set to -1, so that the next focused element will be the first one.
             currentIndex = -1;
             break;
           case 'End':
             event.preventDefault();
             direction = 'previous';
-            // Set to length, so that the previous focused element will be the last one.
-            currentIndex = elementsRef.current.length;
+            currentIndex = navigableItemsSnapshot.length;
             break;
           default:
             return;
         }
 
-        focusNext(elementsRef, currentIndex, direction, shouldWrap, shouldFocus);
+        focusItem(currentIndex, direction, shouldWrap);
       };
 
       return {
@@ -174,78 +332,426 @@ export default function useRovingTabIndex(
         }),
       };
     },
-    [focusableIndex, isRtl, orientation, shouldWrap, shouldFocus],
+    [focusItem, getNavigableItemsSnapshot, isRtl, orientation, shouldWrap],
   );
 
-  const focusNextExport = React.useCallback(
-    (shouldFocusOverride: ((element: HTMLElement | null) => boolean) | undefined) => {
+  const focusNext = React.useCallback(
+    (isItemFocusableOverride?: (item: RegisteredRovingTabIndexItem<Key>) => boolean) => {
+      const navigableItemsSnapshot = getNavigableItemsSnapshot();
       const currentFocus = getActiveElement(ownerDocument(containerRef.current));
       const isFocusOnContainer = currentFocus === containerRef.current;
-      let currentIndex = focusableIndex;
+      const currentIndex = isFocusOnContainer
+        ? -1
+        : getCurrentActiveItemIndex(navigableItemsSnapshot, currentFocus, activeItemIdRef.current);
 
-      if (isFocusOnContainer) {
-        currentIndex = -1;
-      }
-
-      const nextIndex = focusNext(
-        elementsRef,
-        currentIndex,
-        'next',
-        true,
-        shouldFocusOverride ?? shouldFocus,
-      );
-
-      if (nextIndex !== -1) {
-        setFocusableIndex(nextIndex);
-      }
-
-      return nextIndex;
+      return focusItem(currentIndex, 'next', true, isItemFocusableOverride)?.id ?? null;
     },
-    [focusableIndex, shouldFocus],
+    [focusItem, getNavigableItemsSnapshot],
   );
 
-  return { getItemProps, getContainerProps, focusNext: focusNextExport };
+  return React.useMemo(
+    () => ({
+      activeItemId: resolvedActiveItemId,
+      focusActiveItem,
+      focusNext,
+      getActiveItem,
+      getContainerProps,
+      getItemMap,
+      isItemActive,
+      registerItem,
+      setActiveItemId,
+      unregisterItem,
+    }),
+    [
+      resolvedActiveItemId,
+      focusActiveItem,
+      focusNext,
+      getActiveItem,
+      getContainerProps,
+      getItemMap,
+      isItemActive,
+      registerItem,
+      setActiveItemId,
+      unregisterItem,
+    ],
+  );
 }
 
-function focusNext(
-  elementsRef: React.RefObject<(HTMLElement | null)[]>,
+export function useRovingTabIndexItem<Key = unknown>(
+  item: RovingTabIndexItem<Key>,
+  rootParam?: UseRovingTabIndexRootReturn<Key> | null,
+): UseRovingTabIndexItemReturn {
+  const rootFromContext = React.useContext(
+    RovingTabIndexContext,
+  ) as UseRovingTabIndexRootReturn<Key> | null;
+  const root = rootParam ?? rootFromContext;
+  const itemRef = React.useRef<HTMLElement | null>(null);
+  const normalizedItem = React.useMemo(
+    () => ({
+      disabled: item.disabled ?? false,
+      element: null,
+      focusableWhenDisabled: item.focusableWhenDisabled ?? false,
+      id: item.id,
+      ref: item.ref,
+      selected: item.selected ?? false,
+      textValue: item.textValue,
+    }),
+    [item.disabled, item.focusableWhenDisabled, item.id, item.ref, item.selected, item.textValue],
+  );
+  const normalizedItemRef = React.useRef(normalizedItem);
+  normalizedItemRef.current = normalizedItem;
+  const registerItem = root?.registerItem;
+  const unregisterItem = root?.unregisterItem;
+  const setActiveItemId = root?.setActiveItemId;
+  const isItemActive = root?.isItemActive;
+
+  const handleNodeChange = React.useCallback(
+    (elementNode: HTMLElement | null) => {
+      itemRef.current = elementNode;
+
+      if (!registerItem || !unregisterItem) {
+        return;
+      }
+
+      if (elementNode === null) {
+        unregisterItem(item.id);
+        return;
+      }
+
+      registerItem({
+        ...normalizedItemRef.current,
+        element: elementNode,
+      });
+    },
+    [item.id, registerItem, unregisterItem],
+  );
+
+  const handleRef = useForkRef(item.ref, handleNodeChange);
+  const mergedRef = React.useCallback<React.RefCallback<HTMLElement | null>>(
+    (elementNode) => {
+      handleRef?.(elementNode);
+    },
+    [handleRef],
+  );
+
+  useEnhancedEffect(() => {
+    if (!registerItem || !itemRef.current) {
+      return;
+    }
+
+    registerItem({
+      ...normalizedItemRef.current,
+      element: itemRef.current,
+    });
+  }, [
+    normalizedItem.disabled,
+    normalizedItem.focusableWhenDisabled,
+    normalizedItem.id,
+    normalizedItem.selected,
+    normalizedItem.textValue,
+    registerItem,
+  ]);
+
+  useEnhancedEffect(() => {
+    if (!unregisterItem) {
+      return undefined;
+    }
+
+    const itemId = item.id;
+
+    return () => {
+      unregisterItem(itemId);
+    };
+  }, [item.id, unregisterItem]);
+
+  const onFocus = React.useCallback(
+    (_event: React.FocusEvent<HTMLElement>) => {
+      setActiveItemId?.(item.id);
+    },
+    [item.id, setActiveItemId],
+  );
+
+  return {
+    onFocus,
+    ref: mergedRef,
+    tabIndex: isItemActive?.(item.id) ? 0 : -1,
+  };
+}
+
+export default function useRovingTabIndex<Key = unknown>(
+  options: UseRovingTabIndexOptions<Key>,
+): UseRovingTabIndexReturn<Key> {
+  const rovingRoot = useRovingTabIndexRoot(options);
+  const {
+    activeItemId,
+    getActiveItem,
+    getContainerProps,
+    getItemMap,
+    focusNext,
+    registerItem,
+    unregisterItem,
+  } = rovingRoot;
+  const requestedActiveItemIdForInitialTabStop =
+    options.activeItemId === undefined || options.activeItemId === null
+      ? null
+      : options.activeItemId;
+  const itemExternalRefsRef = React.useRef<Map<Key, React.Ref<HTMLElement> | undefined>>(new Map());
+  const itemRefCallbacksRef = React.useRef<Map<Key, (element: HTMLElement | null) => void>>(
+    new Map(),
+  );
+  const renderedItemIdsRef = React.useRef<Set<Key>>(new Set());
+  renderedItemIdsRef.current = new Set();
+
+  React.useEffect(() => {
+    getItemMap().forEach((_, itemId) => {
+      if (!renderedItemIdsRef.current.has(itemId)) {
+        unregisterItem(itemId);
+        itemExternalRefsRef.current.delete(itemId);
+        itemRefCallbacksRef.current.delete(itemId);
+      }
+    });
+  });
+
+  const getItemProps = React.useCallback(
+    (item: RovingTabIndexItem<Key>) => {
+      const normalizedItem = normalizeItem(item);
+      const previousItem = getItemMap().get(normalizedItem.id);
+      renderedItemIdsRef.current.add(normalizedItem.id);
+      itemExternalRefsRef.current.set(normalizedItem.id, normalizedItem.ref);
+
+      if (!areItemsEquivalent(previousItem, normalizedItem)) {
+        registerItem({
+          ...normalizedItem,
+          element: previousItem?.element ?? null,
+        });
+      }
+
+      let itemRefCallback = itemRefCallbacksRef.current.get(normalizedItem.id);
+
+      if (!itemRefCallback) {
+        itemRefCallback = (elementNode) => {
+          const externalRef = itemExternalRefsRef.current.get(normalizedItem.id);
+
+          if (elementNode === null) {
+            unregisterItem(normalizedItem.id);
+            setRef(externalRef ?? null, elementNode);
+            return;
+          }
+
+          const latestItem = getItemMap().get(normalizedItem.id) ?? normalizedItem;
+          registerItem({
+            ...latestItem,
+            element: elementNode,
+          });
+
+          setRef(externalRef ?? null, elementNode);
+        };
+
+        itemRefCallbacksRef.current.set(normalizedItem.id, itemRefCallback);
+      }
+
+      return {
+        ref: itemRefCallback,
+        tabIndex:
+          normalizedItem.id === (activeItemId ?? requestedActiveItemIdForInitialTabStop) ? 0 : -1,
+      };
+    },
+    [
+      activeItemId,
+      getItemMap,
+      registerItem,
+      requestedActiveItemIdForInitialTabStop,
+      unregisterItem,
+    ],
+  );
+
+  return {
+    activeItemId,
+    getActiveItem,
+    getContainerProps,
+    getItemMap,
+    getItemProps,
+    focusNext,
+  };
+}
+
+function resolveActiveItemId<Key>({
+  activeItemId,
+  items,
+  isItemFocusable,
+  getDefaultActiveItemId,
+}: {
+  activeItemId: Key | null | undefined;
+  items: RegisteredRovingTabIndexItem<Key>[];
+  isItemFocusable: (item: RegisteredRovingTabIndexItem<Key>) => boolean;
+  getDefaultActiveItemId?: ((items: RegisteredRovingTabIndexItem<Key>[]) => Key | null) | undefined;
+}): Key | null {
+  if (activeItemId !== undefined && activeItemId !== null) {
+    return resolveRequestedItemId(activeItemId, items, isItemFocusable);
+  }
+
+  return resolveDefaultItemId(items, isItemFocusable, getDefaultActiveItemId);
+}
+
+function resolveRequestedItemId<Key>(
+  requestedItemId: Key,
+  items: RegisteredRovingTabIndexItem<Key>[],
+  isItemFocusable: (item: RegisteredRovingTabIndexItem<Key>) => boolean,
+): Key | null {
+  const requestedItemIndex = findItemIndexById(items, requestedItemId);
+
+  if (requestedItemIndex === -1) {
+    return getFirstFocusableItemId(items, isItemFocusable);
+  }
+
+  if (isItemFocusable(items[requestedItemIndex])) {
+    return items[requestedItemIndex].id;
+  }
+
+  return getNextActiveItem(items, requestedItemIndex, 'next', false, isItemFocusable)?.id ?? null;
+}
+
+function resolveDefaultItemId<Key>(
+  items: RegisteredRovingTabIndexItem<Key>[],
+  isItemFocusable: (item: RegisteredRovingTabIndexItem<Key>) => boolean,
+  getDefaultActiveItemId?: ((items: RegisteredRovingTabIndexItem<Key>[]) => Key | null) | undefined,
+): Key | null {
+  const defaultItemId = getDefaultActiveItemId?.(items);
+
+  if (defaultItemId !== null && defaultItemId !== undefined) {
+    const defaultItem = getItemById(items, defaultItemId);
+
+    if (defaultItem && isItemFocusable(defaultItem)) {
+      return defaultItem.id;
+    }
+  }
+
+  return getFirstFocusableItemId(items, isItemFocusable);
+}
+
+function getCurrentActiveItemIndex<Key>(
+  items: RegisteredRovingTabIndexItem<Key>[],
+  currentFocus: Element | null,
+  fallbackActiveItemId: Key | null,
+) {
+  if (currentFocus) {
+    const focusedIndex = findItemIndexByElement(items, currentFocus);
+
+    if (focusedIndex !== -1) {
+      return focusedIndex;
+    }
+  }
+
+  return findItemIndexById(items, fallbackActiveItemId);
+}
+
+function getNextActiveItem<Key>(
+  items: RegisteredRovingTabIndexItem<Key>[],
   currentIndex: number,
   direction: 'next' | 'previous',
   wrap: boolean,
-  shouldFocus: (element: HTMLElement | null) => boolean,
-): number {
-  if (elementsRef.current.length === 0) {
-    return -1;
-  }
+  isItemFocusable: (item: RegisteredRovingTabIndexItem<Key>) => boolean,
+) {
+  const lastIndex = items.length - 1;
 
-  const lastIndex = elementsRef.current.length - 1;
+  if (lastIndex === -1) {
+    return null;
+  }
   let wrappedOnce = false;
   let nextIndex = getNextIndex(currentIndex, lastIndex, direction, wrap);
   const startIndex = nextIndex;
 
   while (nextIndex !== -1) {
-    // Prevent infinite loop.
     if (nextIndex === startIndex) {
       if (wrappedOnce) {
-        return -1;
+        return null;
       }
       wrappedOnce = true;
     }
 
-    const nextElement = elementsRef.current[nextIndex];
+    const nextItem = items[nextIndex];
 
-    // Same logic as useAutocomplete.js
-    if (!shouldFocus(nextElement)) {
-      // Move to the next element.
+    if (!nextItem || !isItemFocusable(nextItem)) {
       nextIndex = getNextIndex(nextIndex, lastIndex, direction, wrap);
     } else {
-      nextElement?.focus();
-
-      return nextIndex;
+      return nextItem;
     }
   }
 
-  return -1;
+  return null;
+}
+
+function getFirstFocusableItemId<Key>(
+  items: RegisteredRovingTabIndexItem<Key>[],
+  isItemFocusable: (item: RegisteredRovingTabIndexItem<Key>) => boolean,
+): Key | null {
+  return items.find((item) => isItemFocusable(item))?.id ?? null;
+}
+
+function getItemById<Key>(items: RegisteredRovingTabIndexItem<Key>[], itemId: Key | null) {
+  return itemId === null ? null : (items.find((item) => item.id === itemId) ?? null);
+}
+
+function findItemIndexById<Key>(items: RegisteredRovingTabIndexItem<Key>[], itemId: Key | null) {
+  return itemId === null ? -1 : items.findIndex((item) => item.id === itemId);
+}
+
+function findItemIndexByElement<Key>(
+  items: RegisteredRovingTabIndexItem<Key>[],
+  element: Element | null,
+) {
+  if (!element) {
+    return -1;
+  }
+
+  return items.findIndex((item) => item.element === element || item.element?.contains(element));
+}
+
+function getOrderedItems<Key>(itemMap: Map<Key, RegisteredRovingTabIndexItem<Key>>) {
+  const items = Array.from(itemMap.values());
+
+  if (items.every((item) => item.element === null)) {
+    return items;
+  }
+
+  const connectedItems = items
+    .filter(isConnectedItem)
+    .sort((itemA, itemB) => sortByDocumentPosition(itemA.element, itemB.element));
+  const disconnectedItems = items.filter((item) => !isConnectedItem(item));
+
+  return [...connectedItems, ...disconnectedItems];
+}
+
+function normalizeItem<Key>(item: RovingTabIndexItem<Key>): RegisteredRovingTabIndexItem<Key> & {
+  ref?: React.Ref<HTMLElement> | undefined;
+} {
+  return {
+    id: item.id,
+    ref: item.ref,
+    element: null,
+    disabled: item.disabled ?? false,
+    focusableWhenDisabled: item.focusableWhenDisabled ?? false,
+    textValue: item.textValue,
+    selected: item.selected ?? false,
+  };
+}
+
+function areItemsEquivalent<Key>(
+  previousItem: RegisteredRovingTabIndexItem<Key> | undefined,
+  nextItem: RegisteredRovingTabIndexItem<Key>,
+) {
+  if (!previousItem) {
+    return false;
+  }
+
+  return (
+    previousItem.id === nextItem.id &&
+    previousItem.element === nextItem.element &&
+    previousItem.disabled === nextItem.disabled &&
+    previousItem.focusableWhenDisabled === nextItem.focusableWhenDisabled &&
+    previousItem.selected === nextItem.selected &&
+    previousItem.textValue === nextItem.textValue
+  );
 }
 
 function getNextIndex(
@@ -265,29 +771,59 @@ function getNextIndex(
   if (currentIndex === 0) {
     return wrap ? lastIndex : -1;
   }
+
   return currentIndex - 1;
 }
 
-function internalShouldFocus(element: HTMLElement | null) {
-  if (!element) {
+export function isRovingTabIndexItemFocusable<Key>(item: RegisteredRovingTabIndexItem<Key>) {
+  if (!item.element) {
     return false;
   }
 
+  if (item.focusableWhenDisabled) {
+    return true;
+  }
+
   return (
-    !element.hasAttribute('disabled') &&
-    element.getAttribute('aria-disabled') !== 'true' &&
-    element.hasAttribute('tabindex')
+    !item.disabled &&
+    !item.element.hasAttribute('disabled') &&
+    item.element.getAttribute('aria-disabled') !== 'true'
   );
 }
+
+function isConnectedItem<Key>(
+  item: RegisteredRovingTabIndexItem<Key>,
+): item is RegisteredRovingTabIndexItem<Key> & { element: HTMLElement } {
+  return item.element !== null && item.element.isConnected;
+}
+
+/* eslint-disable no-bitwise */
+function sortByDocumentPosition(a: Element, b: Element) {
+  if (a === b) {
+    return 0;
+  }
+
+  const position = a.compareDocumentPosition(b);
+
+  if (
+    position & Node.DOCUMENT_POSITION_FOLLOWING ||
+    position & Node.DOCUMENT_POSITION_CONTAINED_BY
+  ) {
+    return -1;
+  }
+
+  if (position & Node.DOCUMENT_POSITION_PRECEDING || position & Node.DOCUMENT_POSITION_CONTAINS) {
+    return 1;
+  }
+
+  return 0;
+}
+/* eslint-enable no-bitwise */
 
 function handleRefs(...refs: (React.Ref<HTMLElement> | undefined)[]) {
   return (node: HTMLElement | null) => {
     refs.forEach((ref) => {
-      if (typeof ref === 'function') {
-        ref(node);
-      } else if (ref) {
-        ref.current = node;
-      }
+      setRef(ref ?? null, node);
     });
   };
 }

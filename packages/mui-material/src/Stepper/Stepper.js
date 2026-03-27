@@ -5,9 +5,9 @@ import clsx from 'clsx';
 import integerPropType from '@mui/utils/integerPropType';
 import composeClasses from '@mui/utils/composeClasses';
 import { useRtl } from '@mui/system/RtlProvider';
-import useRovingTabIndex from '../utils/useRovingTabIndex';
 import { styled } from '../zero-styled';
 import { useDefaultProps } from '../DefaultPropsProvider';
+import { RovingTabIndexProvider, useRovingTabIndexRoot } from '../utils/useRovingTabIndex';
 import { getStepperUtilityClass } from './stepperClasses';
 import StepConnector from '../StepConnector';
 import { StepperContextProvider } from './StepperContext';
@@ -118,11 +118,11 @@ const Stepper = React.forwardRef(function Stepper(inProps, ref) {
     });
   });
 
-  const { getContainerProps, getItemProps } = useRovingTabIndex({
+  const rovingTabIndex = useRovingTabIndexRoot({
     orientation,
     isRtl,
   });
-  const rovingTabIndexContainerProps = getContainerProps(ref);
+  const rovingTabIndexContainerProps = rovingTabIndex.getContainerProps(ref);
 
   const contextValue = React.useMemo(
     () => ({
@@ -132,37 +132,29 @@ const Stepper = React.forwardRef(function Stepper(inProps, ref) {
       nonLinear,
       orientation,
       totalSteps,
-      getRovingTabIndexProps: getItemProps,
       isTabList,
     }),
-    [
-      activeStep,
-      alternativeLabel,
-      connector,
-      nonLinear,
-      orientation,
-      totalSteps,
-      getItemProps,
-      isTabList,
-    ],
+    [activeStep, alternativeLabel, connector, nonLinear, orientation, totalSteps, isTabList],
   );
 
   return (
     <StepperContextProvider value={contextValue}>
-      <StepperRoot
-        as={component}
-        ownerState={ownerState}
-        className={clsx(classes.root, className)}
-        ref={ref}
-        {...(isTabList && {
-          role: 'tablist',
-          'aria-orientation': orientation,
-          ...rovingTabIndexContainerProps,
-        })}
-        {...other}
-      >
-        {steps}
-      </StepperRoot>
+      <RovingTabIndexProvider value={rovingTabIndex}>
+        <StepperRoot
+          as={component}
+          ownerState={ownerState}
+          className={clsx(classes.root, className)}
+          ref={ref}
+          {...(isTabList && {
+            role: 'tablist',
+            'aria-orientation': orientation,
+            ...rovingTabIndexContainerProps,
+          })}
+          {...other}
+        >
+          {steps}
+        </StepperRoot>
+      </RovingTabIndexProvider>
     </StepperContextProvider>
   );
 });

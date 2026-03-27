@@ -1,3 +1,8 @@
-import useRovingTabIndex from '@mui/utils/useRovingTabIndex';
-
-export default useRovingTabIndex;
+export {
+  RovingTabIndexContext,
+  RovingTabIndexProvider,
+  default,
+  isRovingTabIndexItemFocusable,
+  useRovingTabIndexItem,
+  useRovingTabIndexRoot,
+} from '@mui/utils/useRovingTabIndex';

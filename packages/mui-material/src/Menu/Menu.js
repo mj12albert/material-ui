@@ -1,6 +1,5 @@
 'use client';
 import * as React from 'react';
-import { isFragment } from 'react-is';
 import PropTypes from 'prop-types';
 import composeClasses from '@mui/utils/composeClasses';
 import HTMLElementType from '@mui/utils/HTMLElementType';
@@ -101,6 +100,10 @@ const Menu = React.forwardRef(function Menu(inProps, ref) {
       menuListActionsRef.current.adjustStyleForScrollbar(element, {
         direction: isRtl ? 'rtl' : 'ltr',
       });
+
+      if (autoFocus) {
+        menuListActionsRef.current.focusIfNoActiveItem?.();
+      }
     }
   };
 
@@ -113,40 +116,6 @@ const Menu = React.forwardRef(function Menu(inProps, ref) {
       }
     }
   };
-
-  /**
-   * the index of the item should receive focus
-   * in a `variant="selectedMenu"` it's the first `selected` item
-   * otherwise it's the very first item.
-   */
-  let activeItemIndex = -1;
-  // since we inject focus related props into children we have to do a lookahead
-  // to check if there is a `selected` item. We're looking for the last `selected`
-  // item and use the first valid item as a fallback
-  React.Children.map(children, (child, index) => {
-    if (!React.isValidElement(child)) {
-      return;
-    }
-
-    if (process.env.NODE_ENV !== 'production') {
-      if (isFragment(child)) {
-        console.error(
-          [
-            "MUI: The Menu component doesn't accept a Fragment as a child.",
-            'Consider providing an array instead.',
-          ].join('\n'),
-        );
-      }
-    }
-
-    if (!child.props.disabled) {
-      if (variant === 'selectedMenu' && child.props.selected) {
-        activeItemIndex = index;
-      } else if (activeItemIndex === -1) {
-        activeItemIndex = index;
-      }
-    }
-  });
 
   const externalForwardedProps = {
     slots,
@@ -190,6 +159,9 @@ const Menu = React.forwardRef(function Menu(inProps, ref) {
 
   return (
     <MenuRoot
+      // `autoFocus` here means Menu should move focus itself, usually into MenuList or its active item.
+      // Disable the underlying Popover/Modal autofocus path so it does not race with that logic.
+      disableAutoFocus={autoFocus}
       onClose={onClose}
       anchorOrigin={{
         vertical: 'bottom',
@@ -226,7 +198,7 @@ const Menu = React.forwardRef(function Menu(inProps, ref) {
     >
       <ListSlot
         actions={menuListActionsRef}
-        autoFocus={autoFocus && (activeItemIndex === -1 || disableAutoFocusItem)}
+        autoFocus={autoFocus && open}
         autoFocusItem={autoFocusItem}
         variant={variant}
         {...listSlotProps}

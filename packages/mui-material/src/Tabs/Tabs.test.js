@@ -955,6 +955,19 @@ describe.skipIf(isSafari)('<Tabs />', () => {
       const indicator = container.firstChild.querySelectorAll(`button > .${classes.indicator}`);
       expect(indicator).to.have.lengthOf(1);
     });
+
+    it('renders the selected tab as tabbable server-side', () => {
+      const { container } = renderToString(
+        <Tabs value={1}>
+          <Tab />
+          <Tab />
+        </Tabs>,
+      );
+      const tabElements = container.querySelectorAll('[role="tab"]');
+
+      expect(tabElements[0]).to.have.attribute('tabindex', '-1');
+      expect(tabElements[1]).to.have.attribute('tabindex', '0');
+    });
   });
 
   describe('keyboard navigation when focus is on a tab', () => {

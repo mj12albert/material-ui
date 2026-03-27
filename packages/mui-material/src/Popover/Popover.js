@@ -106,6 +106,7 @@ const Popover = React.forwardRef(function Popover(inProps, ref) {
     children,
     className,
     container: containerProp,
+    disableAutoFocus = false,
     elevation = 8,
     marginThreshold = 16,
     open,
@@ -435,6 +436,7 @@ const Popover = React.forwardRef(function Popover(inProps, ref) {
       {...(!isHostComponent(RootSlot) && {
         slots: rootSlotsProp,
         slotProps: rootSlotPropsProp,
+        disableAutoFocus,
         disableScrollLock,
       })}
     >
@@ -554,6 +556,12 @@ Popover.propTypes /* remove-proptypes */ = {
     HTMLElementType,
     PropTypes.func,
   ]),
+  /**
+   * If `true`, the modal will not automatically shift focus to itself when it opens, and
+   * replace it to the last focused element when it closes.
+   * @default false
+   */
+  disableAutoFocus: PropTypes.bool,
   /**
    * Disable the scroll lock behavior.
    * @default false

@@ -8,13 +8,6 @@ export interface StepperContextType {
   nonLinear: boolean;
   orientation: 'horizontal' | 'vertical';
   totalSteps: number;
-  getRovingTabIndexProps: (
-    index: number,
-    ref?: React.Ref<HTMLElement>,
-  ) => {
-    ref: (element: HTMLElement | null) => void;
-    tabIndex: number;
-  };
   isTabList: boolean;
 }
 

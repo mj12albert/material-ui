@@ -11,9 +11,12 @@ import ListContext from '../List/ListContext';
 import ButtonBase from '../ButtonBase';
 import useEnhancedEffect from '../utils/useEnhancedEffect';
 import useForkRef from '../utils/useForkRef';
+import useId from '../utils/useId';
+import { useRovingTabIndexItem } from '../utils/useRovingTabIndex';
 import { dividerClasses } from '../Divider';
 import { listItemIconClasses } from '../ListItemIcon';
 import { listItemTextClasses } from '../ListItemText';
+import MenuListContext from '../MenuList/MenuListContext';
 import menuItemClasses, { getMenuItemUtilityClass } from './menuItemClasses';
 import { useSelectFocusSource } from '../Select';
 
@@ -204,10 +207,16 @@ const MenuItem = React.forwardRef(function MenuItem(inProps, ref) {
     }),
     [context.dense, dense, disableGutters],
   );
+  const menuListContext = React.useContext(MenuListContext);
+  const rovingItemId = useId();
+  const disabledItemsFocusable = menuListContext?.disabledItemsFocusable ?? false;
+  const shouldAutoFocus =
+    autoFocus ||
+    (menuListContext?.autoFocusItem === true && menuListContext.activeItemId === rovingItemId);
 
   const menuItemRef = React.useRef(null);
   useEnhancedEffect(() => {
-    if (autoFocus) {
+    if (shouldAutoFocus) {
       if (menuItemRef.current) {
         focusWithVisible(menuItemRef.current, focusSource);
       } else if (process.env.NODE_ENV !== 'production') {
@@ -217,7 +226,7 @@ const MenuItem = React.forwardRef(function MenuItem(inProps, ref) {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoFocus]);
+  }, [shouldAutoFocus]);
 
   const ownerState = {
     ...props,
@@ -228,21 +237,35 @@ const MenuItem = React.forwardRef(function MenuItem(inProps, ref) {
 
   const classes = useUtilityClasses(props);
 
-  const handleRef = useForkRef(menuItemRef, ref);
+  const rovingTabIndexItemProps = useRovingTabIndexItem({
+    id: rovingItemId,
+    ref,
+    disabled: props.disabled,
+    focusableWhenDisabled: disabledItemsFocusable,
+    selected: props.selected,
+  });
+
+  const handleRef = useForkRef(menuItemRef, rovingTabIndexItemProps.ref);
 
   let tabIndex;
-  if (!props.disabled) {
-    tabIndex = tabIndexProp !== undefined ? tabIndexProp : -1;
+  if (tabIndexProp !== undefined) {
+    tabIndex = tabIndexProp;
+  } else if (menuListContext?.variant === 'selectedMenu') {
+    tabIndex = rovingTabIndexItemProps.tabIndex;
+  } else if (!props.disabled || disabledItemsFocusable) {
+    tabIndex = -1;
   }
 
   return (
     <ListContext.Provider value={childContext}>
       <MenuItemRoot
         ref={handleRef}
+        onFocus={rovingTabIndexItemProps.onFocus}
         role={role}
         tabIndex={tabIndex}
         component={component}
         internalNativeButton={false}
+        focusableWhenDisabled={disabledItemsFocusable}
         focusVisibleClassName={clsx(classes.focusVisible, focusVisibleClassName)}
         className={clsx(classes.root, className)}
         {...other}

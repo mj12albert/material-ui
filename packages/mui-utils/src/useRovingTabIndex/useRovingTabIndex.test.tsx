@@ -1,37 +1,84 @@
 import * as React from 'react';
 import { expect } from 'chai';
-import { createRenderer, fireEvent, screen, act } from '@mui/internal-test-utils';
-import { spy } from 'sinon';
-import useRovingTabIndex, { type UseRovingTabIndexOptions } from './useRovingTabIndex';
+import { act, createRenderer, fireEvent, screen } from '@mui/internal-test-utils';
+import useRovingTabIndex, {
+  type UseRovingTabIndexOptions,
+  useRovingTabIndexRoot,
+  useRovingTabIndexItem,
+  RovingTabIndexProvider,
+} from './useRovingTabIndex';
 
-let focusNext: (shouldSkipFocusOverride?: (element: HTMLElement | null) => boolean) => number;
+type TestItem = {
+  id: string;
+  ariaDisabled?: boolean;
+  disabled?: boolean;
+  focusableWhenDisabled?: boolean;
+  render?: boolean;
+  selected?: boolean;
+  tabIndex?: number;
+};
 
-function TestComponent(props: Partial<UseRovingTabIndexOptions>) {
+let focusNext: ReturnType<typeof useRovingTabIndex<string>>['focusNext'];
+let getItemMap: ReturnType<typeof useRovingTabIndex<string>>['getItemMap'];
+
+const defaultItems: TestItem[] = [
+  { id: 'button-1' },
+  { id: 'button-2' },
+  { id: 'button-3', disabled: true },
+  { id: 'button-4' },
+];
+
+function TestComponent(
+  props: Partial<UseRovingTabIndexOptions<string>> & {
+    items?: TestItem[];
+    buttonRef?: React.Ref<HTMLButtonElement>;
+  },
+) {
+  const { items = defaultItems, buttonRef, ...options } = props;
   const {
     getItemProps,
     getContainerProps,
+    getItemMap: getItemMapFn,
     focusNext: focusNextFn,
   } = useRovingTabIndex({
     orientation: 'horizontal',
-    ...props,
+    ...options,
   });
 
   focusNext = focusNextFn;
+  getItemMap = getItemMapFn;
 
   return (
     <div data-testid="container" tabIndex={-1} {...getContainerProps()}>
-      <button {...getItemProps(0)} data-testid="button-1" role="tab">
-        Button 1
-      </button>
-      <button {...getItemProps(1)} data-testid="button-2" role="tab">
-        Button 2
-      </button>
-      <button {...getItemProps(2)} data-testid="button-3" role="tab" disabled>
-        Button 3
-      </button>
-      <button {...getItemProps(3)} data-testid="button-4" role="tab">
-        Button 4
-      </button>
+      {items
+        .filter((item) => item.render !== false)
+        .map((item) => {
+          const rovingItemProps = getItemProps({
+            id: item.id,
+            ref: item.id === 'button-1' ? buttonRef : undefined,
+            disabled: item.disabled,
+            focusableWhenDisabled: item.focusableWhenDisabled,
+            selected: item.selected,
+          });
+
+          return (
+            <button
+              {...rovingItemProps}
+              aria-disabled={
+                item.ariaDisabled || (item.focusableWhenDisabled && item.disabled)
+                  ? 'true'
+                  : undefined
+              }
+              data-testid={item.id}
+              disabled={item.disabled && !item.focusableWhenDisabled ? true : undefined}
+              key={item.id}
+              role="tab"
+              tabIndex={item.tabIndex ?? rovingItemProps.tabIndex}
+            >
+              {item.id}
+            </button>
+          );
+        })}
     </div>
   );
 }
@@ -39,126 +86,77 @@ function TestComponent(props: Partial<UseRovingTabIndexOptions>) {
 describe('useRovingTabIndex', () => {
   const { render } = createRenderer();
 
-  test('should set the first enabled element as focusable when no focusableIndex is provided', () => {
+  test('sets the first enabled item as the default tab stop', () => {
     render(<TestComponent />);
 
-    expect(screen.getByTestId('button-1').getAttribute('tabindex')).to.equal('0');
-    expect(screen.getByTestId('button-2').getAttribute('tabindex')).to.equal('-1');
-    expect(screen.getByTestId('button-3').getAttribute('tabindex')).to.equal('-1');
-    expect(screen.getByTestId('button-4').getAttribute('tabindex')).to.equal('-1');
+    expect(screen.getByTestId('button-1')).to.have.attribute('tabindex', '0');
+    expect(screen.getByTestId('button-2')).to.have.attribute('tabindex', '-1');
+    expect(screen.getByTestId('button-3')).to.have.attribute('tabindex', '-1');
+    expect(screen.getByTestId('button-4')).to.have.attribute('tabindex', '-1');
   });
 
-  test('should set focusable index correctly', () => {
-    const focusableIndex = 1;
+  test('uses activeItemId when provided', () => {
+    render(<TestComponent activeItemId="button-2" />);
 
-    render(<TestComponent focusableIndex={focusableIndex} />);
-
-    expect(screen.getByTestId('button-1').getAttribute('tabindex')).to.equal('-1');
-    expect(screen.getByTestId('button-2').getAttribute('tabindex')).to.equal('0');
-    expect(screen.getByTestId('button-3').getAttribute('tabindex')).to.equal('-1');
-    expect(screen.getByTestId('button-4').getAttribute('tabindex')).to.equal('-1');
+    expect(screen.getByTestId('button-1')).to.have.attribute('tabindex', '-1');
+    expect(screen.getByTestId('button-2')).to.have.attribute('tabindex', '0');
   });
 
-  test('should update focusable index when prop changes', () => {
-    const focusableIndex = 1;
+  test('syncs to activeItemId when it changes', () => {
+    const { setProps } = render(<TestComponent activeItemId="button-2" />);
 
-    const { setProps } = render(<TestComponent focusableIndex={focusableIndex} />);
+    setProps({ activeItemId: 'button-4' });
 
-    setProps({ focusableIndex: 3 });
-
-    expect(screen.getByTestId('button-1').getAttribute('tabindex')).to.equal('-1');
-    expect(screen.getByTestId('button-2').getAttribute('tabindex')).to.equal('-1');
-    expect(screen.getByTestId('button-3').getAttribute('tabindex')).to.equal('-1');
-    expect(screen.getByTestId('button-4').getAttribute('tabindex')).to.equal('0');
+    expect(screen.getByTestId('button-2')).to.have.attribute('tabindex', '-1');
+    expect(screen.getByTestId('button-4')).to.have.attribute('tabindex', '0');
   });
 
-  test('should set focusable index to next enabled element if initial index is on a disabled element', () => {
-    const focusableIndex = 2;
+  test('activeItemId=null falls back to the first focusable item', () => {
+    render(<TestComponent activeItemId={null} />);
 
-    render(<TestComponent focusableIndex={focusableIndex} />);
-
-    expect(screen.getByTestId('button-1').getAttribute('tabindex')).to.equal('-1');
-    expect(screen.getByTestId('button-2').getAttribute('tabindex')).to.equal('-1');
-    expect(screen.getByTestId('button-3').getAttribute('tabindex')).to.equal('-1');
-    expect(screen.getByTestId('button-4').getAttribute('tabindex')).to.equal('0');
+    expect(screen.getByTestId('button-1')).to.have.attribute('tabindex', '0');
+    expect(screen.getByTestId('button-2')).to.have.attribute('tabindex', '-1');
   });
 
-  test('should not change focusable index if initial index is on a disabled element but there are no enabled elements', () => {
-    function TestComponentWithDisabledButtons() {
-      const { getItemProps, getContainerProps } = useRovingTabIndex({
-        orientation: 'horizontal',
-      });
+  test('moves to the next focusable item when the requested item is disabled', () => {
+    render(<TestComponent activeItemId="button-3" />);
 
-      return (
-        <div data-testid="container" tabIndex={-1} {...getContainerProps()}>
-          <button {...getItemProps(0)} data-testid="button-1" disabled role="tab">
-            Button 1
-          </button>
-          <button {...getItemProps(1)} data-testid="button-2" disabled role="tab">
-            Button 2
-          </button>
-        </div>
-      );
-    }
-
-    render(<TestComponentWithDisabledButtons />);
-
-    expect(screen.getByTestId('button-1').getAttribute('tabindex')).to.equal('-1');
-    expect(screen.getByTestId('button-2').getAttribute('tabindex')).to.equal('-1');
+    expect(screen.getByTestId('button-3')).to.have.attribute('tabindex', '-1');
+    expect(screen.getByTestId('button-4')).to.have.attribute('tabindex', '0');
   });
 
-  test('should update focusable index when prop change and the element is disabled', () => {
-    function TestComponentWithDisabledButtons() {
-      const { getItemProps, getContainerProps } = useRovingTabIndex({
-        orientation: 'horizontal',
-      });
+  test('re-resolves when mounted item metadata changes', () => {
+    const { setProps } = render(
+      <TestComponent items={[{ id: 'button-1' }, { id: 'button-2' }, { id: 'button-3' }]} />,
+    );
 
-      return (
-        <div data-testid="container" tabIndex={-1} {...getContainerProps()}>
-          <button {...getItemProps(0)} data-testid="button-1" disabled role="tab">
-            Button 1
-          </button>
-          <button {...getItemProps(1)} data-testid="button-2" disabled role="tab">
-            Button 2
-          </button>
-        </div>
-      );
-    }
+    setProps({
+      items: [{ id: 'button-1', disabled: true }, { id: 'button-2' }, { id: 'button-3' }],
+    });
 
-    const { setProps } = render(<TestComponentWithDisabledButtons />);
-
-    expect(screen.getByTestId('button-1').getAttribute('tabindex')).to.equal('-1');
-    expect(screen.getByTestId('button-2').getAttribute('tabindex')).to.equal('-1');
-
-    setProps({ focusableIndex: 1 });
-
-    expect(screen.getByTestId('button-1').getAttribute('tabindex')).to.equal('-1');
-    expect(screen.getByTestId('button-2').getAttribute('tabindex')).to.equal('-1');
+    expect(screen.getByTestId('button-1')).to.have.attribute('tabindex', '-1');
+    expect(screen.getByTestId('button-2')).to.have.attribute('tabindex', '0');
   });
 
-  test('should do nothing when there are no children', () => {
-    function TestComponentWithDisabledButtons() {
-      const { getContainerProps } = useRovingTabIndex({
-        orientation: 'horizontal',
-      });
+  test('cleans up item map entries when items unregister', () => {
+    const { setProps } = render(
+      <TestComponent items={[{ id: 'button-1' }, { id: 'button-2' }, { id: 'button-3' }]} />,
+    );
 
-      return <div data-testid="container" tabIndex={-1} {...getContainerProps()}></div>;
-    }
+    expect(Array.from(getItemMap().keys())).to.deep.equal(['button-1', 'button-2', 'button-3']);
 
-    const { setProps } = render(<TestComponentWithDisabledButtons />);
+    setProps({
+      items: [{ id: 'button-1' }, { id: 'button-3' }],
+    });
 
-    expect(screen.getByTestId('container').getAttribute('tabindex')).to.equal('-1');
-
-    setProps({ focusableIndex: 1 });
-
-    expect(screen.getByTestId('container').getAttribute('tabindex')).to.equal('-1');
+    expect(Array.from(getItemMap().keys())).to.deep.equal(['button-1', 'button-3']);
   });
 
   test('should not infinite loop when focusNext is called with no children', () => {
-    let focusNextResult: number | undefined;
+    let focusNextResult: string | null = null;
 
     function EmptyContainer() {
-      const { getContainerProps, focusNext: focusNextFn } = useRovingTabIndex({
+      const { getContainerProps, focusNext: focusNextFn } = useRovingTabIndex<string>({
         orientation: 'horizontal',
       });
 
@@ -173,12 +171,12 @@ describe('useRovingTabIndex', () => {
       focusNextResult = focusNext();
     });
 
-    expect(focusNextResult).to.equal(-1);
+    expect(focusNextResult).to.equal(null);
   });
 
   test('should not infinite loop on arrow key navigation with no children', async () => {
     function EmptyContainer() {
-      const { getContainerProps } = useRovingTabIndex({
+      const { getContainerProps } = useRovingTabIndex<string>({
         orientation: 'horizontal',
       });
 
@@ -201,7 +199,7 @@ describe('useRovingTabIndex', () => {
 
   test('should not infinite loop on arrow key navigation with no children (vertical)', async () => {
     function EmptyContainer() {
-      const { getContainerProps } = useRovingTabIndex({
+      const { getContainerProps } = useRovingTabIndex<string>({
         orientation: 'vertical',
       });
 
@@ -219,584 +217,350 @@ describe('useRovingTabIndex', () => {
     expect(container).toHaveFocus();
   });
 
-  test('should make the controlled prop take precedence over internal state', async () => {
-    const focusableIndex = 1;
+  test('leaves all items at tabindex -1 when none are focusable', () => {
+    render(
+      <TestComponent
+        items={[
+          { id: 'button-1', disabled: true },
+          { id: 'button-2', disabled: true },
+        ]}
+      />,
+    );
 
-    const { user } = render(<TestComponent focusableIndex={focusableIndex} />);
-
-    await user.keyboard('{ArrowRight}');
-
-    expect(screen.getByTestId('button-1').getAttribute('tabindex')).to.equal('-1');
-    expect(screen.getByTestId('button-2').getAttribute('tabindex')).to.equal('0');
-    expect(screen.getByTestId('button-3').getAttribute('tabindex')).to.equal('-1');
-    expect(screen.getByTestId('button-4').getAttribute('tabindex')).to.equal('-1');
+    expect(screen.getByTestId('button-1')).to.have.attribute('tabindex', '-1');
+    expect(screen.getByTestId('button-2')).to.have.attribute('tabindex', '-1');
   });
 
-  test('should update focusable index correctly when clicked', async () => {
+  test('updates the active item when a child receives focus', async () => {
     const { user } = render(<TestComponent />);
 
-    const button1 = screen.getByTestId('button-1');
-    const button2 = screen.getByTestId('button-2');
-    const button3 = screen.getByTestId('button-3');
-    const button4 = screen.getByTestId('button-4');
+    await user.click(screen.getByTestId('button-2'));
 
-    expect(button1.getAttribute('tabindex')).to.equal('0');
-    expect(button2.getAttribute('tabindex')).to.equal('-1');
-    expect(button3.getAttribute('tabindex')).to.equal('-1');
-    expect(button4.getAttribute('tabindex')).to.equal('-1');
-
-    await user.click(button2);
-
-    expect(button1.getAttribute('tabindex')).to.equal('-1');
-    expect(button2.getAttribute('tabindex')).to.equal('0');
-    expect(button3.getAttribute('tabindex')).to.equal('-1');
-    expect(button4.getAttribute('tabindex')).to.equal('-1');
+    expect(screen.getByTestId('button-1')).to.have.attribute('tabindex', '-1');
+    expect(screen.getByTestId('button-2')).to.have.attribute('tabindex', '0');
   });
 
-  test('should focus correctly using left and right arrow keys on horizontal orientation while skipping disabled elements', async () => {
+  test('supports horizontal keyboard navigation and skips disabled items', async () => {
     const { user } = render(<TestComponent />);
-
-    const button1 = screen.getByTestId('button-1');
-    const button2 = screen.getByTestId('button-2');
-    const button3 = screen.getByTestId('button-3');
-    const button4 = screen.getByTestId('button-4');
-
-    await user.click(button1);
-    await user.keyboard('{ArrowRight}');
-
-    expect(button1.getAttribute('tabindex')).to.equal('-1');
-    expect(button2.getAttribute('tabindex')).to.equal('0');
-    expect(button3.getAttribute('tabindex')).to.equal('-1');
-    expect(button4.getAttribute('tabindex')).to.equal('-1');
-    expect(button2).toHaveFocus();
-
-    await user.keyboard('{ArrowRight}');
-
-    expect(button1.getAttribute('tabindex')).to.equal('-1');
-    expect(button2.getAttribute('tabindex')).to.equal('-1');
-    expect(button3.getAttribute('tabindex')).to.equal('-1');
-    expect(button4.getAttribute('tabindex')).to.equal('0');
-    expect(button4).toHaveFocus();
-
-    await user.keyboard('{ArrowRight}');
-
-    expect(button1.getAttribute('tabindex')).to.equal('0');
-    expect(button2.getAttribute('tabindex')).to.equal('-1');
-    expect(button3.getAttribute('tabindex')).to.equal('-1');
-    expect(button4.getAttribute('tabindex')).to.equal('-1');
-    expect(button1).toHaveFocus();
-
-    await user.keyboard('{ArrowLeft}');
-
-    expect(button1.getAttribute('tabindex')).to.equal('-1');
-    expect(button2.getAttribute('tabindex')).to.equal('-1');
-    expect(button3.getAttribute('tabindex')).to.equal('-1');
-    expect(button4.getAttribute('tabindex')).to.equal('0');
-    expect(button4).toHaveFocus();
-
-    await user.keyboard('{ArrowLeft}');
-
-    expect(button1.getAttribute('tabindex')).to.equal('-1');
-    expect(button2.getAttribute('tabindex')).to.equal('0');
-    expect(button3.getAttribute('tabindex')).to.equal('-1');
-    expect(button4.getAttribute('tabindex')).to.equal('-1');
-    expect(button2).toHaveFocus();
-
-    await user.keyboard('{ArrowLeft}');
-
-    expect(button1.getAttribute('tabindex')).to.equal('0');
-    expect(button2.getAttribute('tabindex')).to.equal('-1');
-    expect(button3.getAttribute('tabindex')).to.equal('-1');
-    expect(button4.getAttribute('tabindex')).to.equal('-1');
-    expect(button1).toHaveFocus();
-  });
-
-  test('should focus correctly using up and down arrow keys on vertical orientation while skipping disabled elements', async () => {
-    const { user } = render(<TestComponent orientation="vertical" />);
-
-    const button1 = screen.getByTestId('button-1');
-    const button2 = screen.getByTestId('button-2');
-    const button3 = screen.getByTestId('button-3');
-    const button4 = screen.getByTestId('button-4');
-
-    await user.click(button1);
-    await user.keyboard('{ArrowDown}');
-
-    expect(button1.getAttribute('tabindex')).to.equal('-1');
-    expect(button2.getAttribute('tabindex')).to.equal('0');
-    expect(button3.getAttribute('tabindex')).to.equal('-1');
-    expect(button4.getAttribute('tabindex')).to.equal('-1');
-    expect(button2).toHaveFocus();
-
-    await user.keyboard('{ArrowDown}');
-
-    expect(button1.getAttribute('tabindex')).to.equal('-1');
-    expect(button2.getAttribute('tabindex')).to.equal('-1');
-    expect(button3.getAttribute('tabindex')).to.equal('-1');
-    expect(button4.getAttribute('tabindex')).to.equal('0');
-    expect(button4).toHaveFocus();
-
-    await user.keyboard('{ArrowDown}');
-
-    expect(button1.getAttribute('tabindex')).to.equal('0');
-    expect(button2.getAttribute('tabindex')).to.equal('-1');
-    expect(button3.getAttribute('tabindex')).to.equal('-1');
-    expect(button4.getAttribute('tabindex')).to.equal('-1');
-    expect(button1).toHaveFocus();
-
-    await user.keyboard('{ArrowUp}');
-
-    expect(button1.getAttribute('tabindex')).to.equal('-1');
-    expect(button2.getAttribute('tabindex')).to.equal('-1');
-    expect(button3.getAttribute('tabindex')).to.equal('-1');
-    expect(button4.getAttribute('tabindex')).to.equal('0');
-    expect(button4).toHaveFocus();
-
-    await user.keyboard('{ArrowUp}');
-
-    expect(button1.getAttribute('tabindex')).to.equal('-1');
-    expect(button2.getAttribute('tabindex')).to.equal('0');
-    expect(button3.getAttribute('tabindex')).to.equal('-1');
-    expect(button4.getAttribute('tabindex')).to.equal('-1');
-    expect(button2).toHaveFocus();
-
-    await user.keyboard('{ArrowUp}');
-
-    expect(button1.getAttribute('tabindex')).to.equal('0');
-    expect(button2.getAttribute('tabindex')).to.equal('-1');
-    expect(button3.getAttribute('tabindex')).to.equal('-1');
-    expect(button4.getAttribute('tabindex')).to.equal('-1');
-    expect(button1).toHaveFocus();
-  });
-
-  test('should not wrap focus when navigating with arrow keys if wrap is set to false', async () => {
-    const { user } = render(<TestComponent shouldWrap={false} />);
-
-    const button1 = screen.getByTestId('button-1');
-    const button2 = screen.getByTestId('button-2');
-    const button3 = screen.getByTestId('button-3');
-    const button4 = screen.getByTestId('button-4');
-
-    await user.click(button1);
-    await user.keyboard('{ArrowLeft}');
-
-    expect(button1.getAttribute('tabindex')).to.equal('0');
-    expect(button2.getAttribute('tabindex')).to.equal('-1');
-    expect(button3.getAttribute('tabindex')).to.equal('-1');
-    expect(button4.getAttribute('tabindex')).to.equal('-1');
-    expect(button1).toHaveFocus();
-
-    await user.click(button4);
-    await user.keyboard('{ArrowRight}');
-
-    expect(button1.getAttribute('tabindex')).to.equal('-1');
-    expect(button2.getAttribute('tabindex')).to.equal('-1');
-    expect(button3.getAttribute('tabindex')).to.equal('-1');
-    expect(button4.getAttribute('tabindex')).to.equal('0');
-    expect(button4).toHaveFocus();
-  });
-
-  test('should skip elements that do not have the tabindex attribute set', async () => {
-    const { user } = render(<TestComponent />);
-
-    const button1 = screen.getByTestId('button-1');
-    const button2 = screen.getByTestId('button-2');
-    const button4 = screen.getByTestId('button-4');
-
-    button2.removeAttribute('tabindex');
-
-    await user.click(button1);
-    await user.keyboard('{ArrowRight}');
-
-    expect(button4.getAttribute('tabindex')).to.equal('0');
-    expect(button4).toHaveFocus();
-  });
-
-  test('should skip aria-disabled elements when navigating with arrow keys', async () => {
-    const { user } = render(<TestComponent />);
-
-    screen.getByTestId('button-2').setAttribute('aria-disabled', 'true');
 
     await user.click(screen.getByTestId('button-1'));
     await user.keyboard('{ArrowRight}');
 
-    expect(screen.getByTestId('button-1').getAttribute('tabindex')).to.equal('-1');
-    expect(screen.getByTestId('button-2').getAttribute('tabindex')).to.equal('-1');
-    expect(screen.getByTestId('button-3').getAttribute('tabindex')).to.equal('-1');
-    expect(screen.getByTestId('button-4').getAttribute('tabindex')).to.equal('0');
+    expect(screen.getByTestId('button-2')).toHaveFocus();
+
+    await user.keyboard('{ArrowRight}');
+
     expect(screen.getByTestId('button-4')).toHaveFocus();
 
     await user.keyboard('{ArrowLeft}');
 
-    expect(screen.getByTestId('button-1').getAttribute('tabindex')).to.equal('0');
-    expect(screen.getByTestId('button-2').getAttribute('tabindex')).to.equal('-1');
-    expect(screen.getByTestId('button-3').getAttribute('tabindex')).to.equal('-1');
-    expect(screen.getByTestId('button-4').getAttribute('tabindex')).to.equal('-1');
+    expect(screen.getByTestId('button-2')).toHaveFocus();
+  });
+
+  test('supports vertical keyboard navigation', async () => {
+    const { user } = render(<TestComponent orientation="vertical" />);
+
+    await user.click(screen.getByTestId('button-1'));
+    await user.keyboard('{ArrowDown}');
+
+    expect(screen.getByTestId('button-2')).toHaveFocus();
+
+    await user.keyboard('{ArrowUp}');
+
     expect(screen.getByTestId('button-1')).toHaveFocus();
   });
 
-  test('should skip disabled elements at the start and end when navigating with arrow keys', async () => {
-    const { user } = render(<TestComponent />);
+  test('does not wrap when shouldWrap is false', async () => {
+    const { user } = render(<TestComponent shouldWrap={false} />);
 
-    const button1 = screen.getByTestId('button-1');
-    const button2 = screen.getByTestId('button-2');
-    const button3 = screen.getByTestId('button-3');
-    const button4 = screen.getByTestId('button-4');
-
-    button1.setAttribute('aria-disabled', 'true');
-    button4.setAttribute('disabled', 'true');
-    button3.removeAttribute('disabled');
-
-    await user.click(button2);
-    await user.keyboard('{ArrowLeft}');
-
-    expect(button1.getAttribute('tabindex')).to.equal('-1');
-    expect(button2.getAttribute('tabindex')).to.equal('-1');
-    expect(button3.getAttribute('tabindex')).to.equal('0');
-    expect(button4.getAttribute('tabindex')).to.equal('-1');
-    expect(button3).toHaveFocus();
-
+    await user.click(screen.getByTestId('button-4'));
     await user.keyboard('{ArrowRight}');
 
-    expect(button1.getAttribute('tabindex')).to.equal('-1');
-    expect(button2.getAttribute('tabindex')).to.equal('0');
-    expect(button3.getAttribute('tabindex')).to.equal('-1');
-    expect(button4.getAttribute('tabindex')).to.equal('-1');
-    expect(button2).toHaveFocus();
+    expect(screen.getByTestId('button-4')).toHaveFocus();
   });
 
-  test('should move to the end of the list when End key is pressed and to the start when Home key is pressed', async () => {
+  test('supports Home and End navigation', async () => {
     const { user } = render(<TestComponent />);
 
-    const button1 = screen.getByTestId('button-1');
-    const button2 = screen.getByTestId('button-2');
-    const button3 = screen.getByTestId('button-3');
-    const button4 = screen.getByTestId('button-4');
-
-    await user.click(button1);
+    await user.click(screen.getByTestId('button-2'));
     await user.keyboard('{End}');
 
-    expect(button1.getAttribute('tabindex')).to.equal('-1');
-    expect(button2.getAttribute('tabindex')).to.equal('-1');
-    expect(button3.getAttribute('tabindex')).to.equal('-1');
-    expect(button4.getAttribute('tabindex')).to.equal('0');
-    expect(button4).toHaveFocus();
+    expect(screen.getByTestId('button-4')).toHaveFocus();
 
     await user.keyboard('{Home}');
 
-    expect(button1.getAttribute('tabindex')).to.equal('0');
-    expect(button2.getAttribute('tabindex')).to.equal('-1');
-    expect(button3.getAttribute('tabindex')).to.equal('-1');
-    expect(button4.getAttribute('tabindex')).to.equal('-1');
-    expect(button1).toHaveFocus();
+    expect(screen.getByTestId('button-1')).toHaveFocus();
   });
 
-  test('does not change focusable index if a non-arrow key is pressed', async () => {
+  test('starts from the root when navigating from root focus', async () => {
     const { user } = render(<TestComponent />);
+    const container = screen.getByTestId('container');
 
-    const button1 = screen.getByTestId('button-1');
-    const button2 = screen.getByTestId('button-2');
-    const button3 = screen.getByTestId('button-3');
-    const button4 = screen.getByTestId('button-4');
-
-    await user.click(button1);
-    await user.keyboard('{Enter}');
-
-    expect(button1.getAttribute('tabindex')).to.equal('0');
-    expect(button2.getAttribute('tabindex')).to.equal('-1');
-    expect(button3.getAttribute('tabindex')).to.equal('-1');
-    expect(button4.getAttribute('tabindex')).to.equal('-1');
-    expect(button1).toHaveFocus();
-  });
-
-  test('should not change focus on vertical navigation when orientation is horizontal', async () => {
-    const { user } = render(<TestComponent orientation="horizontal" />);
-
-    const button1 = screen.getByTestId('button-1');
-    const button2 = screen.getByTestId('button-2');
-
-    await user.click(button1);
-    await user.keyboard('{ArrowDown}');
-
-    expect(button1.getAttribute('tabindex')).to.equal('0');
-    expect(button2.getAttribute('tabindex')).to.equal('-1');
-    expect(button1).toHaveFocus();
-
-    await user.keyboard('{ArrowUp}');
-
-    expect(button1.getAttribute('tabindex')).to.equal('0');
-    expect(button2.getAttribute('tabindex')).to.equal('-1');
-    expect(button1).toHaveFocus();
-  });
-
-  it.each(['Shift', 'Control', 'Alt', 'Meta'])(
-    'does not change focusable index if a %s modifier key is pressed',
-    async (modifier) => {
-      const { user } = render(<TestComponent />);
-
-      const button1 = screen.getByTestId('button-1');
-      const button2 = screen.getByTestId('button-2');
-      const button3 = screen.getByTestId('button-3');
-      const button4 = screen.getByTestId('button-4');
-
-      await user.click(button1);
-      await user.keyboard(`{${modifier}>}{ArrowRight}{/${modifier}}`);
-
-      expect(button1.getAttribute('tabindex')).to.equal('0');
-      expect(button2.getAttribute('tabindex')).to.equal('-1');
-      expect(button3.getAttribute('tabindex')).to.equal('-1');
-      expect(button4.getAttribute('tabindex')).to.equal('-1');
-      expect(button1).toHaveFocus();
-    },
-  );
-
-  test('prevents default behavior of arrow keys when navigating', async () => {
-    const { user } = render(<TestComponent />);
-
-    const button1 = screen.getByTestId('button-1');
-
-    await user.click(button1);
-
-    const event = new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true });
-    const preventDefaultSpy = spy(event, 'preventDefault');
-
-    fireEvent(button1, event);
-
-    expect(preventDefaultSpy.callCount).to.equal(1);
-  });
-
-  test('does not prevent default behavior of non-arrow keys', async () => {
-    const { user } = render(<TestComponent />);
-
-    const button1 = screen.getByTestId('button-1');
-
-    await user.click(button1);
-
-    const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
-    const preventDefaultSpy = spy(event, 'preventDefault');
-
-    fireEvent(button1, event);
-
-    expect(preventDefaultSpy.callCount).to.equal(0);
-  });
-
-  test('supports RTL orientation by reversing the behavior of left and right arrow keys', async () => {
-    const { user } = render(<TestComponent orientation="horizontal" isRtl />);
-
-    const button1 = screen.getByTestId('button-1');
-    const button4 = screen.getByTestId('button-4');
-
-    await user.click(button1);
+    container.focus();
     await user.keyboard('{ArrowRight}');
 
-    expect(button1.getAttribute('tabindex')).to.equal('-1');
-    expect(button4.getAttribute('tabindex')).to.equal('0');
-    expect(button4).toHaveFocus();
+    expect(screen.getByTestId('button-1')).toHaveFocus();
+  });
 
-    await user.keyboard('{ArrowLeft}');
+  test('ignores modifier key navigation', () => {
+    render(<TestComponent />);
+    const button1 = screen.getByTestId('button-1');
 
-    expect(button1.getAttribute('tabindex')).to.equal('0');
-    expect(button4.getAttribute('tabindex')).to.equal('-1');
+    act(() => {
+      button1.focus();
+    });
+
+    fireEvent.keyDown(button1, { key: 'ArrowRight', ctrlKey: true });
+
     expect(button1).toHaveFocus();
   });
 
-  test('does not consider RTL direction for vertical orientation', async () => {
+  test('reverses horizontal navigation in RTL mode', async () => {
+    const { user } = render(<TestComponent isRtl />);
+
+    await user.click(screen.getByTestId('button-1'));
+    await user.keyboard('{ArrowLeft}');
+
+    expect(screen.getByTestId('button-2')).toHaveFocus();
+  });
+
+  test('does not apply RTL reversal to vertical navigation', async () => {
     const { user } = render(<TestComponent orientation="vertical" isRtl />);
 
-    const button1 = screen.getByTestId('button-1');
-    const button2 = screen.getByTestId('button-2');
-
-    await user.click(button1);
+    await user.click(screen.getByTestId('button-1'));
     await user.keyboard('{ArrowDown}');
 
-    expect(button1.getAttribute('tabindex')).to.equal('-1');
-    expect(button2.getAttribute('tabindex')).to.equal('0');
-    expect(button2).toHaveFocus();
-
-    await user.keyboard('{ArrowUp}');
-
-    expect(button1.getAttribute('tabindex')).to.equal('0');
-    expect(button2.getAttribute('tabindex')).to.equal('-1');
-    expect(button1).toHaveFocus();
+    expect(screen.getByTestId('button-2')).toHaveFocus();
   });
 
-  test('should skip focus on elements for which shouldFocus returns false', async () => {
-    const shouldFocus = (element: HTMLElement | null) =>
-      element?.getAttribute('data-disabled') !== 'true';
+  test('supports item-based isItemFocusable overrides', async () => {
+    const { user } = render(
+      <TestComponent
+        isItemFocusable={(item) =>
+          item.id !== 'button-2' &&
+          item.element?.dataset.disabled !== 'true' &&
+          !item.disabled &&
+          item.element?.getAttribute('aria-disabled') !== 'true'
+        }
+      />,
+    );
 
-    const { user } = render(<TestComponent shouldFocus={shouldFocus} />);
+    screen.getByTestId('button-4').dataset.disabled = 'true';
 
-    const button1 = screen.getByTestId('button-1');
-    const button2 = screen.getByTestId('button-2');
-    const button3 = screen.getByTestId('button-3');
-
-    button2.setAttribute('data-disabled', 'true');
-    button3.removeAttribute('disabled');
-
-    await user.click(button1);
+    await user.click(screen.getByTestId('button-1'));
     await user.keyboard('{ArrowRight}');
 
-    expect(button1.getAttribute('tabindex')).to.equal('-1');
-    expect(button2.getAttribute('tabindex')).to.equal('-1');
-    expect(button3.getAttribute('tabindex')).to.equal('0');
-    expect(button3).toHaveFocus();
-
-    await user.keyboard('{ArrowLeft}');
-
-    expect(button1.getAttribute('tabindex')).to.equal('0');
-    expect(button2.getAttribute('tabindex')).to.equal('-1');
-    expect(button3.getAttribute('tabindex')).to.equal('-1');
-    expect(button1).toHaveFocus();
+    expect(screen.getByTestId('button-1')).toHaveFocus();
   });
 
-  test('focuses first element on arrow right when container is focused', async () => {
-    const { user } = render(<TestComponent />);
+  test('keeps the current active item when new items register', () => {
+    const { setProps } = render(<TestComponent items={[{ id: 'button-1' }, { id: 'button-2' }]} />);
 
-    const container = screen.getByTestId('container');
-    const button1 = screen.getByTestId('button-1');
+    fireEvent.focus(screen.getByTestId('button-2'));
 
-    container.focus();
-    await user.keyboard('{ArrowRight}');
+    setProps({
+      items: [{ id: 'button-0' }, { id: 'button-1' }, { id: 'button-2' }],
+    });
 
-    expect(button1.getAttribute('tabindex')).to.equal('0');
-    expect(button1).toHaveFocus();
+    expect(screen.getByTestId('button-2')).to.have.attribute('tabindex', '0');
   });
 
-  test('focuses last element on arrow left when container is focused', async () => {
-    const { user } = render(<TestComponent />);
+  test('re-resolves when the active item unregisters', () => {
+    const { setProps } = render(<TestComponent items={[{ id: 'button-1' }, { id: 'button-2' }]} />);
 
-    const container = screen.getByTestId('container');
-    const button4 = screen.getByTestId('button-4');
+    fireEvent.focus(screen.getByTestId('button-2'));
 
-    container.focus();
-    await user.keyboard('{ArrowLeft}');
+    setProps({
+      items: [{ id: 'button-1' }, { id: 'button-2', render: false }],
+    });
 
-    expect(button4.getAttribute('tabindex')).to.equal('0');
-    expect(button4).toHaveFocus();
+    expect(screen.getByTestId('button-1')).to.have.attribute('tabindex', '0');
   });
 
-  test('focusNext function should move focus to the next enabled element', async () => {
+  test('focusNext moves focus to the next focusable item and returns its id', async () => {
     const { user } = render(<TestComponent />);
-    let focusNextResult: number | undefined;
+    let focusNextResult: string | null = null;
 
-    const button1 = screen.getByTestId('button-1');
-    const button2 = screen.getByTestId('button-2');
-    const button3 = screen.getByTestId('button-3');
-    const button4 = screen.getByTestId('button-4');
-
-    await user.click(button1);
+    await user.click(screen.getByTestId('button-1'));
 
     act(() => {
       focusNextResult = focusNext();
     });
 
-    expect(button1.getAttribute('tabindex')).to.equal('-1');
-    expect(button2.getAttribute('tabindex')).to.equal('0');
-    expect(button3.getAttribute('tabindex')).to.equal('-1');
-    expect(button4.getAttribute('tabindex')).to.equal('-1');
-    expect(button2).toHaveFocus();
-    expect(focusNextResult).to.equal(1);
+    expect(screen.getByTestId('button-2')).toHaveFocus();
+    expect(focusNextResult).to.equal('button-2');
   });
 
-  test('focusNext function should skip elements for which shouldFocus returns false', async () => {
-    let focusNextResult: number | undefined;
-    const shouldFocus = (element: HTMLElement | null) => element !== screen.getByTestId('button-2');
-
-    const { user } = render(<TestComponent shouldFocus={shouldFocus} />);
-
-    const button1 = screen.getByTestId('button-1');
-    const button2 = screen.getByTestId('button-2');
-    const button3 = screen.getByTestId('button-3');
-    const button4 = screen.getByTestId('button-4');
-    button3.removeAttribute('disabled');
-
-    await user.click(button1);
-
-    act(() => {
-      focusNextResult = focusNext();
-    });
-
-    expect(button1.getAttribute('tabindex')).to.equal('-1');
-    expect(button2.getAttribute('tabindex')).to.equal('-1');
-    expect(button3.getAttribute('tabindex')).to.equal('0');
-    expect(button4.getAttribute('tabindex')).to.equal('-1');
-    expect(button3).toHaveFocus();
-    expect(focusNextResult).to.equal(2);
-  });
-
-  test('focusNext function should return -1 if there are no next enabled elements to focus', async () => {
-    let focusNextResult: number | undefined;
+  test('focusNext returns null when no focusable item matches', async () => {
     const { user } = render(<TestComponent />);
+    let focusNextResult: string | null = null;
 
-    const button1 = screen.getByTestId('button-1');
-
-    await user.click(button1);
+    await user.click(screen.getByTestId('button-1'));
 
     act(() => {
       focusNextResult = focusNext(() => false);
     });
 
-    expect(focusNextResult).to.equal(-1);
+    expect(focusNextResult).to.equal(null);
   });
 
-  test('should skip null items when focusing', async () => {
-    function TestComponentWithNullItems() {
-      const { getItemProps, getContainerProps } = useRovingTabIndex({
-        orientation: 'horizontal',
-      });
+  test('supports external refs on items', () => {
+    const buttonRef = { current: null } as React.RefObject<HTMLButtonElement | null>;
 
-      getItemProps(1); // This will create a null item in the elementsRef
+    render(<TestComponent buttonRef={buttonRef} />);
 
-      return (
-        <div data-testid="container" tabIndex={-1} {...getContainerProps()}>
-          <button {...getItemProps(0)} data-testid="button-1">
-            Button 1
-          </button>
-          <button {...getItemProps(2)} data-testid="button-2">
-            Button 2
-          </button>
-        </div>
-      );
-    }
+    expect(buttonRef.current).to.equal(screen.getByTestId('button-1'));
+  });
 
-    const { user } = render(<TestComponentWithNullItems />);
+  test('navigates in DOM order after dynamic item insertion', async () => {
+    const { user, setProps } = render(
+      <TestComponent items={[{ id: 'button-1' }, { id: 'button-2' }]} />,
+    );
+
+    setProps({
+      items: [{ id: 'button-0' }, { id: 'button-1' }, { id: 'button-2' }],
+    });
+
+    await user.click(screen.getByTestId('button-0'));
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByTestId('button-1')).toHaveFocus();
+
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByTestId('button-2')).toHaveFocus();
+  });
+
+  test('allows navigation to disabled items with focusableWhenDisabled', async () => {
+    const { user } = render(
+      <TestComponent
+        items={[
+          { id: 'button-1' },
+          { id: 'button-2', disabled: true, focusableWhenDisabled: true },
+          { id: 'button-3' },
+        ]}
+      />,
+    );
 
     await user.click(screen.getByTestId('button-1'));
     await user.keyboard('{ArrowRight}');
+    expect(screen.getByTestId('button-2')).toHaveFocus();
 
-    expect(screen.getByTestId('button-1').getAttribute('tabindex')).to.equal('-1');
-    expect(screen.getByTestId('button-2').getAttribute('tabindex')).to.equal('0');
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByTestId('button-3')).toHaveFocus();
+  });
+});
+
+function ContextItem(props: { id: string; disabled?: boolean; focusableWhenDisabled?: boolean }) {
+  const { id, disabled, focusableWhenDisabled } = props;
+  const itemProps = useRovingTabIndexItem({ id, disabled, focusableWhenDisabled });
+
+  return (
+    <button
+      {...itemProps}
+      aria-disabled={disabled ? 'true' : undefined}
+      data-testid={id}
+      role="tab"
+    >
+      {id}
+    </button>
+  );
+}
+
+type ContextTestItem = {
+  id: string;
+  disabled?: boolean;
+  render?: boolean;
+};
+
+function TestComponentWithContext(
+  props: Partial<UseRovingTabIndexOptions<string>> & {
+    items?: ContextTestItem[];
+  },
+) {
+  const { items = [{ id: 'item-1' }, { id: 'item-2' }, { id: 'item-3' }], ...options } = props;
+  const root = useRovingTabIndexRoot({
+    orientation: 'horizontal',
+    ...options,
+  });
+  const containerProps = root.getContainerProps();
+
+  return (
+    <RovingTabIndexProvider value={root}>
+      <div data-testid="ctx-container" tabIndex={-1} {...containerProps}>
+        {items
+          .filter((item) => item.render !== false)
+          .map((item) => (
+            <ContextItem key={item.id} id={item.id} disabled={item.disabled} />
+          ))}
+      </div>
+    </RovingTabIndexProvider>
+  );
+}
+
+describe('useRovingTabIndexRoot + useRovingTabIndexItem (context-based API)', () => {
+  const { render } = createRenderer();
+
+  test('sets the first enabled item as the default tab stop', () => {
+    render(<TestComponentWithContext />);
+
+    expect(screen.getByTestId('item-1')).to.have.attribute('tabindex', '0');
+    expect(screen.getByTestId('item-2')).to.have.attribute('tabindex', '-1');
+    expect(screen.getByTestId('item-3')).to.have.attribute('tabindex', '-1');
   });
 
-  test('passing refs to the container and items should not break the hook', () => {
-    const containerRef = { current: null } as React.RefObject<HTMLDivElement | null>;
-    const buttonRef = { current: null } as React.RefObject<HTMLButtonElement | null>;
-    const TestComponentWithRef = React.forwardRef<
-      HTMLDivElement,
-      { buttonRef: React.Ref<HTMLButtonElement> }
-    >((props, ref) => {
-      const { getItemProps, getContainerProps } = useRovingTabIndex({
-        orientation: 'horizontal',
-        ...props,
-      });
+  test('supports keyboard navigation', async () => {
+    const { user } = render(<TestComponentWithContext />);
 
-      return (
-        <div data-testid="container" tabIndex={-1} {...getContainerProps(ref)}>
-          <button {...getItemProps(0, props.buttonRef)} data-testid="button-1">
-            Button 1
-          </button>
-          <button {...getItemProps(1)} data-testid="button-2">
-            Button 2
-          </button>
-        </div>
-      );
+    await user.click(screen.getByTestId('item-1'));
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByTestId('item-2')).toHaveFocus();
+
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByTestId('item-3')).toHaveFocus();
+
+    await user.keyboard('{ArrowLeft}');
+    expect(screen.getByTestId('item-2')).toHaveFocus();
+  });
+
+  test('handles dynamic item insertion', () => {
+    const { setProps } = render(
+      <TestComponentWithContext items={[{ id: 'item-1' }, { id: 'item-2' }]} />,
+    );
+
+    fireEvent.focus(screen.getByTestId('item-2'));
+
+    setProps({
+      items: [{ id: 'item-0' }, { id: 'item-1' }, { id: 'item-2' }],
     });
 
-    render(<TestComponentWithRef ref={containerRef} buttonRef={buttonRef} />);
+    expect(screen.getByTestId('item-2')).to.have.attribute('tabindex', '0');
+  });
 
-    expect(screen.getByTestId('button-1').getAttribute('tabindex')).to.equal('0');
-    expect(screen.getByTestId('button-2').getAttribute('tabindex')).to.equal('-1');
-    expect(containerRef.current).to.equal(screen.getByTestId('container'));
-    expect(buttonRef.current).to.equal(screen.getByTestId('button-1'));
+  test('handles dynamic item removal', () => {
+    const { setProps } = render(
+      <TestComponentWithContext items={[{ id: 'item-1' }, { id: 'item-2' }, { id: 'item-3' }]} />,
+    );
+
+    fireEvent.focus(screen.getByTestId('item-2'));
+
+    setProps({
+      items: [{ id: 'item-1' }, { id: 'item-3' }],
+    });
+
+    expect(screen.getByTestId('item-1')).to.have.attribute('tabindex', '0');
+  });
+
+  test('re-resolves when item metadata changes', () => {
+    const { setProps } = render(
+      <TestComponentWithContext items={[{ id: 'item-1' }, { id: 'item-2' }, { id: 'item-3' }]} />,
+    );
+
+    expect(screen.getByTestId('item-1')).to.have.attribute('tabindex', '0');
+
+    setProps({
+      items: [{ id: 'item-1', disabled: true }, { id: 'item-2' }, { id: 'item-3' }],
+    });
+
+    expect(screen.getByTestId('item-1')).to.have.attribute('tabindex', '-1');
+    expect(screen.getByTestId('item-2')).to.have.attribute('tabindex', '0');
   });
 });

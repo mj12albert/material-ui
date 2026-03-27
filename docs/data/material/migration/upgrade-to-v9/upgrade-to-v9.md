@@ -40,7 +40,6 @@ Expect updates as new breaking changes are introduced.
 
 23 legacy icon exports that ended with `Outline` (without the "d") have been removed.
 These were exact duplicates of their `Outlined` counterparts (for example, `InfoOutline` had the same SVG as `InfoOutlined`).
-They existed due to an older Google Material Design naming convention and caused confusion on the icon search page.
 
 To migrate, rename the import to use the `Outlined` suffix:
 

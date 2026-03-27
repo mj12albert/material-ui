@@ -6,7 +6,7 @@ import * as mui from '@mui/icons-material';
 import synonyms from 'docs/data/material/components/material-icons/synonyms';
 // eslint-disable-next-line import/no-relative-packages
 import myDestRewriter from '../../packages/mui-icons-material/renameFilters/material-design-icons';
-// eslint-disable-next-line import/no-relative-packages
+// eslint-disable-next-line import/no-relative-packages, import/extensions
 import { LEGACY_OUTLINE_ICONS } from '../../packages/mui-icons-material/builder.test.mjs';
 
 function not(a, b) {

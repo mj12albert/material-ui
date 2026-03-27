@@ -193,6 +193,7 @@ describe('builder', () => {
 // These 23 legacy *Outline icons were removed in v9 because they were
 // exact SVG-path duplicates of their *Outlined counterparts.
 // This test prevents them from being silently reintroduced.
+// eslint-disable-next-line import/prefer-default-export
 export const LEGACY_OUTLINE_ICONS = [
   'AddCircleOutline',
   'ChatBubbleOutline',

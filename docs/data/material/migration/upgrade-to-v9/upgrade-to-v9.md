@@ -36,6 +36,23 @@ This list is a work in progress.
 Expect updates as new breaking changes are introduced.
 :::
 
+### Material Icons
+
+23 legacy icon exports that ended with `Outline` (without the "d") have been removed.
+These were exact duplicates of their `Outlined` counterparts (for example, `InfoOutline` had the same SVG as `InfoOutlined`).
+They existed due to an older Google Material Design naming convention and caused confusion on the icon search page.
+
+To migrate, rename the import to use the `Outlined` suffix:
+
+```diff
+-import InfoOutlineIcon from '@mui/icons-material/InfoOutline';
++import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+```
+
+The full list of removed exports: `AddCircleOutline`, `ChatBubbleOutline`, `CheckCircleOutline`, `DeleteOutline`, `DoneOutline`, `DriveFileMoveOutline`, `ErrorOutline`, `HelpOutline`, `InfoOutline`, `LabelImportantOutline`, `LightbulbOutline`, `LockOutline`, `MailOutline`, `ModeEditOutline`, `PauseCircleOutline`, `PeopleOutline`, `PersonOutline`, `PieChartOutline`, `PlayCircleOutline`, `RemoveCircleOutline`, `StarOutline`, `WorkOutline`, `WorkspacesOutline`.
+
+Theme variants of these icons (for example, `InfoOutlineRounded`, `DeleteOutlineSharp`) are **not** affected and remain available.
+
 ### Backdrop
 
 The Backdrop component no longer adds the `aria-hidden="true"` attribute to the Root slot by default.

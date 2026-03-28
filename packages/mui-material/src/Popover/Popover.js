@@ -19,7 +19,7 @@ import Modal from '../Modal';
 import PaperBase from '../Paper';
 import { getPopoverUtilityClass } from './popoverClasses';
 import useSlot from '../utils/useSlot';
-import { mergeSlotProps } from '../utils';
+import mergeSlotProps from '../utils/mergeSlotProps';
 
 export function getOffsetTop(rect, vertical) {
   let offset = 0;

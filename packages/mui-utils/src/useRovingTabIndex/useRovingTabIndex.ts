@@ -55,24 +55,6 @@ export interface UseRovingTabIndexRootReturn<Key = unknown> {
   unregisterItem: (itemId: Key) => void;
 }
 
-interface UseRovingTabIndexReturn<Key = unknown> {
-  activeItemId: Key | null;
-  getActiveItem: () => RegisteredRovingTabIndexItem<Key> | null;
-  getItemMap: () => Map<Key, RegisteredRovingTabIndexItem<Key>>;
-  getItemProps: (item: RovingTabIndexItem<Key>) => {
-    ref: (element: HTMLElement | null) => void;
-    tabIndex: number;
-  };
-  getContainerProps: (ref?: React.Ref<HTMLElement>) => {
-    onFocus: (event: React.FocusEvent<HTMLElement>) => void;
-    onKeyDown: (event: React.KeyboardEvent<HTMLElement>) => void;
-    ref: (element: HTMLElement | null) => void;
-  };
-  focusNext: (
-    isItemFocusableOverride?: (item: RegisteredRovingTabIndexItem<Key>) => boolean,
-  ) => Key | null;
-}
-
 export interface UseRovingTabIndexItemReturn {
   onFocus: (event: React.FocusEvent<HTMLElement>) => void;
   ref: React.RefCallback<HTMLElement | null>;
@@ -119,11 +101,15 @@ export function RovingTabIndexProvider<Key = unknown>(props: RovingTabIndexProvi
  * `isItemFocusable` filters registered items out of keyboard navigation without removing them from the map.
  * @returns An object containing:
  * - `activeItemId`: the resolved active item id for the current render.
- * - `getActiveItem`: a getter for the current active item record.
- * - `getItemMap`: a getter for the registered item map.
- * - `getItemProps`: item props that opt an element into the roving set.
- * - `getContainerProps`: container props that enable roving keyboard handling.
+ * - `focusActiveItem`: an imperative helper that focuses the current active item.
  * - `focusNext`: an imperative helper that moves focus to the next matching item.
+ * - `getActiveItem`: a getter for the current active item record.
+ * - `getContainerProps`: container props that enable roving keyboard handling.
+ * - `getItemMap`: a getter for the registered item map.
+ * - `isItemActive`: a predicate that reports whether an item id currently owns the tab stop.
+ * - `registerItem`: registers or updates an item in the roving set.
+ * - `setActiveItemId`: updates the current active item id.
+ * - `unregisterItem`: removes an item from the roving set.
  */
 export function useRovingTabIndexRoot<Key = unknown>(
   options: UseRovingTabIndexOptions<Key>,
@@ -522,107 +508,6 @@ export function useRovingTabIndexItem<Key = unknown>(
   };
 }
 
-export default function useRovingTabIndex<Key = unknown>(
-  options: UseRovingTabIndexOptions<Key>,
-): UseRovingTabIndexReturn<Key> {
-  const rovingRoot = useRovingTabIndexRoot(options);
-  const {
-    activeItemId,
-    getActiveItem,
-    getContainerProps,
-    getItemMap,
-    focusNext,
-    registerItem,
-    unregisterItem,
-  } = rovingRoot;
-  const requestedActiveItemIdForInitialTabStop =
-    options.activeItemId === undefined || options.activeItemId === null
-      ? null
-      : options.activeItemId;
-  const itemExternalRefsRef = React.useRef<Map<Key, React.Ref<HTMLElement> | undefined>>(new Map());
-  const itemRefCallbacksRef = React.useRef<Map<Key, (element: HTMLElement | null) => void>>(
-    new Map(),
-  );
-  const renderedItemIdsRef = React.useRef<Set<Key>>(new Set());
-  renderedItemIdsRef.current = new Set();
-
-  useEnhancedEffect(() => {
-    getItemMap().forEach((_, itemId) => {
-      if (!renderedItemIdsRef.current.has(itemId)) {
-        unregisterItem(itemId);
-        itemExternalRefsRef.current.delete(itemId);
-        itemRefCallbacksRef.current.delete(itemId);
-      }
-    });
-  });
-
-  const getItemProps = React.useCallback(
-    (item: RovingTabIndexItem<Key>) => {
-      const normalizedItem = normalizeItem(item);
-      const previousItem = getItemMap().get(normalizedItem.id);
-
-      // Parent-owned consumers (for example, Tabs) call `getItemProps()` during render.
-      // Registration intentionally converges in at most one extra render because
-      // `areItemsEquivalent()` short-circuits once the item map matches this render's item.
-      renderedItemIdsRef.current.add(normalizedItem.id);
-      itemExternalRefsRef.current.set(normalizedItem.id, normalizedItem.ref);
-
-      if (!areItemsEquivalent(previousItem, normalizedItem)) {
-        registerItem({
-          ...normalizedItem,
-          element: previousItem?.element ?? null,
-        });
-      }
-
-      let itemRefCallback = itemRefCallbacksRef.current.get(normalizedItem.id);
-
-      if (!itemRefCallback) {
-        itemRefCallback = (elementNode) => {
-          const externalRef = itemExternalRefsRef.current.get(normalizedItem.id);
-
-          if (elementNode === null) {
-            unregisterItem(normalizedItem.id);
-            setRef(externalRef ?? null, elementNode);
-            return;
-          }
-
-          const latestItem = getItemMap().get(normalizedItem.id) ?? normalizedItem;
-          registerItem({
-            ...latestItem,
-            element: elementNode,
-          });
-
-          setRef(externalRef ?? null, elementNode);
-        };
-
-        itemRefCallbacksRef.current.set(normalizedItem.id, itemRefCallback);
-      }
-
-      return {
-        ref: itemRefCallback,
-        tabIndex:
-          normalizedItem.id === (activeItemId ?? requestedActiveItemIdForInitialTabStop) ? 0 : -1,
-      };
-    },
-    [
-      activeItemId,
-      getItemMap,
-      registerItem,
-      requestedActiveItemIdForInitialTabStop,
-      unregisterItem,
-    ],
-  );
-
-  return {
-    activeItemId,
-    getActiveItem,
-    getContainerProps,
-    getItemMap,
-    getItemProps,
-    focusNext,
-  };
-}
-
 function resolveActiveItemId<Key>({
   activeItemId,
   items,
@@ -768,20 +653,6 @@ function getOrderedItems<Key>(itemMap: Map<Key, RegisteredRovingTabIndexItem<Key
   const disconnectedItems = items.filter((item) => !isConnectedItem(item));
 
   return [...connectedItems, ...disconnectedItems];
-}
-
-function normalizeItem<Key>(item: RovingTabIndexItem<Key>): RegisteredRovingTabIndexItem<Key> & {
-  ref?: React.Ref<HTMLElement> | undefined;
-} {
-  return {
-    id: item.id,
-    ref: item.ref,
-    element: null,
-    disabled: item.disabled ?? false,
-    focusableWhenDisabled: item.focusableWhenDisabled ?? false,
-    textValue: item.textValue,
-    selected: item.selected ?? false,
-  };
 }
 
 function areItemsEquivalent<Key>(

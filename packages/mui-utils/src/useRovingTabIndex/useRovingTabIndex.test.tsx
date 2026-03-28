@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { expect } from 'chai';
 import { act, createRenderer, fireEvent, screen } from '@mui/internal-test-utils';
-import useRovingTabIndex, {
+import {
   type UseRovingTabIndexOptions,
   useRovingTabIndexRoot,
   useRovingTabIndexItem,
@@ -18,8 +18,8 @@ type TestItem = {
   tabIndex?: number;
 };
 
-let focusNext: ReturnType<typeof useRovingTabIndex<string>>['focusNext'];
-let getItemMap: ReturnType<typeof useRovingTabIndex<string>>['getItemMap'];
+let focusNext: ReturnType<typeof useRovingTabIndexRoot<string>>['focusNext'];
+let getItemMap: ReturnType<typeof useRovingTabIndexRoot<string>>['getItemMap'];
 
 const defaultItems: TestItem[] = [
   { id: 'button-1' },
@@ -28,6 +28,59 @@ const defaultItems: TestItem[] = [
   { id: 'button-4' },
 ];
 
+function TestButton(props: TestItem & { buttonRef?: React.Ref<HTMLButtonElement> }) {
+  const { id, ariaDisabled, buttonRef, disabled, focusableWhenDisabled, selected, tabIndex } =
+    props;
+  const rovingItemProps = useRovingTabIndexItem({
+    id,
+    ref: buttonRef,
+    disabled,
+    focusableWhenDisabled,
+    selected,
+  });
+
+  return (
+    <button
+      {...rovingItemProps}
+      aria-disabled={ariaDisabled || (focusableWhenDisabled && disabled) ? 'true' : undefined}
+      data-testid={id}
+      disabled={disabled && !focusableWhenDisabled ? true : undefined}
+      role="tab"
+      tabIndex={tabIndex ?? rovingItemProps.tabIndex}
+    >
+      {id}
+    </button>
+  );
+}
+
+function RootParamItem(
+  props: TestItem & {
+    root: ReturnType<typeof useRovingTabIndexRoot<string>>;
+  },
+) {
+  const { root, ...item } = props;
+  const rovingItemProps = useRovingTabIndexItem(
+    {
+      id: item.id,
+      disabled: item.disabled,
+      focusableWhenDisabled: item.focusableWhenDisabled,
+      selected: item.selected,
+    },
+    root,
+  );
+
+  return (
+    <button
+      {...rovingItemProps}
+      aria-disabled={item.disabled ? 'true' : undefined}
+      data-testid={item.id}
+      role="tab"
+    >
+      {item.id}
+    </button>
+  );
+}
+
 function TestComponent(
   props: Partial<UseRovingTabIndexOptions<string>> & {
     items?: TestItem[];
@@ -35,55 +88,32 @@ function TestComponent(
   },
 ) {
   const { items = defaultItems, buttonRef, ...options } = props;
-  const {
-    getItemProps,
-    getContainerProps,
-    getItemMap: getItemMapFn,
-    focusNext: focusNextFn,
-  } = useRovingTabIndex({
+  const root = useRovingTabIndexRoot({
     orientation: 'horizontal',
     ...options,
   });
 
-  focusNext = focusNextFn;
-  getItemMap = getItemMapFn;
+  focusNext = root.focusNext;
+  getItemMap = root.getItemMap;
 
   return (
-    <div data-testid="container" tabIndex={-1} {...getContainerProps()}>
-      {items
-        .filter((item) => item.render !== false)
-        .map((item) => {
-          const rovingItemProps = getItemProps({
-            id: item.id,
-            ref: item.id === 'button-1' ? buttonRef : undefined,
-            disabled: item.disabled,
-            focusableWhenDisabled: item.focusableWhenDisabled,
-            selected: item.selected,
-          });
-
-          return (
-            <button
-              {...rovingItemProps}
-              aria-disabled={
-                item.ariaDisabled || (item.focusableWhenDisabled && item.disabled)
-                  ? 'true'
-                  : undefined
-              }
-              data-testid={item.id}
-              disabled={item.disabled && !item.focusableWhenDisabled ? true : undefined}
+    <RovingTabIndexProvider value={root}>
+      <div data-testid="container" tabIndex={-1} {...root.getContainerProps()}>
+        {items
+          .filter((item) => item.render !== false)
+          .map((item) => (
+            <TestButton
               key={item.id}
-              role="tab"
-              tabIndex={item.tabIndex ?? rovingItemProps.tabIndex}
-            >
-              {item.id}
-            </button>
-          );
-        })}
-    </div>
+              {...item}
+              buttonRef={item.id === 'button-1' ? buttonRef : undefined}
+            />
+          ))}
+      </div>
+    </RovingTabIndexProvider>
   );
 }
 
-describe('useRovingTabIndex', () => {
+describe('useRovingTabIndexRoot + useRovingTabIndexItem', () => {
   const { render } = createRenderer();
 
   test('sets the first enabled item as the default tab stop', () => {
@@ -160,9 +190,10 @@ describe('useRovingTabIndex', () => {
     let focusNextResult: string | null = null;
 
     function EmptyContainer() {
-      const { getContainerProps, focusNext: focusNextFn } = useRovingTabIndex<string>({
+      const root = useRovingTabIndexRoot<string>({
         orientation: 'horizontal',
       });
+      const { getContainerProps, focusNext: focusNextFn } = root;
 
       focusNext = focusNextFn;
 
@@ -180,11 +211,11 @@ describe('useRovingTabIndex', () => {
 
   test('should not infinite loop on arrow key navigation with no children', async () => {
     function EmptyContainer() {
-      const { getContainerProps } = useRovingTabIndex<string>({
+      const root = useRovingTabIndexRoot<string>({
         orientation: 'horizontal',
       });
 
-      return <div data-testid="container" tabIndex={-1} {...getContainerProps()} />;
+      return <div data-testid="container" tabIndex={-1} {...root.getContainerProps()} />;
     }
 
     const { user } = render(<EmptyContainer />);
@@ -203,11 +234,11 @@ describe('useRovingTabIndex', () => {
 
   test('should not infinite loop on arrow key navigation with no children (vertical)', async () => {
     function EmptyContainer() {
-      const { getContainerProps } = useRovingTabIndex<string>({
+      const root = useRovingTabIndexRoot<string>({
         orientation: 'vertical',
       });
 
-      return <div data-testid="container" tabIndex={-1} {...getContainerProps()} />;
+      return <div data-testid="container" tabIndex={-1} {...root.getContainerProps()} />;
     }
 
     const { user } = render(<EmptyContainer />);
@@ -465,31 +496,15 @@ describe('useRovingTabIndex', () => {
   });
 });
 
-function ContextItem(props: { id: string; disabled?: boolean; focusableWhenDisabled?: boolean }) {
-  const { id, disabled, focusableWhenDisabled } = props;
-  const itemProps = useRovingTabIndexItem({ id, disabled, focusableWhenDisabled });
-
-  return (
-    <button
-      {...itemProps}
-      aria-disabled={disabled ? 'true' : undefined}
-      data-testid={id}
-      role="tab"
-    >
-      {id}
-    </button>
-  );
-}
-
-type ContextTestItem = {
+type RootParamTestItem = {
   id: string;
   disabled?: boolean;
   render?: boolean;
 };
 
-function TestComponentWithContext(
+function TestComponentWithExplicitRoot(
   props: Partial<UseRovingTabIndexOptions<string>> & {
-    items?: ContextTestItem[];
+    items?: RootParamTestItem[];
   },
 ) {
   const { items = [{ id: 'item-1' }, { id: 'item-2' }, { id: 'item-3' }], ...options } = props;
@@ -497,26 +512,23 @@ function TestComponentWithContext(
     orientation: 'horizontal',
     ...options,
   });
-  const containerProps = root.getContainerProps();
 
   return (
-    <RovingTabIndexProvider value={root}>
-      <div data-testid="ctx-container" tabIndex={-1} {...containerProps}>
-        {items
-          .filter((item) => item.render !== false)
-          .map((item) => (
-            <ContextItem key={item.id} id={item.id} disabled={item.disabled} />
-          ))}
-      </div>
-    </RovingTabIndexProvider>
+    <div data-testid="root-param-container" tabIndex={-1} {...root.getContainerProps()}>
+      {items
+        .filter((item) => item.render !== false)
+        .map((item) => (
+          <RootParamItem key={item.id} root={root} {...item} />
+        ))}
+    </div>
   );
 }
 
-describe('useRovingTabIndexRoot + useRovingTabIndexItem (context-based API)', () => {
+describe('useRovingTabIndexItem(rootParam)', () => {
   const { render } = createRenderer();
 
   test('sets the first enabled item as the default tab stop', () => {
-    render(<TestComponentWithContext />);
+    render(<TestComponentWithExplicitRoot />);
 
     expect(screen.getByTestId('item-1')).to.have.attribute('tabindex', '0');
     expect(screen.getByTestId('item-2')).to.have.attribute('tabindex', '-1');
@@ -524,7 +536,7 @@ describe('useRovingTabIndexRoot + useRovingTabIndexItem (context-based API)', ()
   });
 
   test('supports keyboard navigation', async () => {
-    const { user } = render(<TestComponentWithContext />);
+    const { user } = render(<TestComponentWithExplicitRoot />);
 
     await user.click(screen.getByTestId('item-1'));
     await user.keyboard('{ArrowRight}');
@@ -539,7 +551,7 @@ describe('useRovingTabIndexRoot + useRovingTabIndexItem (context-based API)', ()
 
   test('handles dynamic item insertion', async () => {
     const { setProps, user } = render(
-      <TestComponentWithContext items={[{ id: 'item-1' }, { id: 'item-2' }]} />,
+      <TestComponentWithExplicitRoot items={[{ id: 'item-1' }, { id: 'item-2' }]} />,
     );
 
     await user.click(screen.getByTestId('item-2'));
@@ -556,7 +568,9 @@ describe('useRovingTabIndexRoot + useRovingTabIndexItem (context-based API)', ()
 
   test('handles dynamic item removal', async () => {
     const { setProps, user } = render(
-      <TestComponentWithContext items={[{ id: 'item-1' }, { id: 'item-2' }, { id: 'item-3' }]} />,
+      <TestComponentWithExplicitRoot
+        items={[{ id: 'item-1' }, { id: 'item-2' }, { id: 'item-3' }]}
+      />,
     );
 
     await user.click(screen.getByTestId('item-2'));
@@ -566,7 +580,7 @@ describe('useRovingTabIndexRoot + useRovingTabIndexItem (context-based API)', ()
     });
 
     act(() => {
-      screen.getByTestId('ctx-container').focus();
+      screen.getByTestId('root-param-container').focus();
     });
 
     await user.keyboard('{ArrowRight}');
@@ -578,7 +592,9 @@ describe('useRovingTabIndexRoot + useRovingTabIndexItem (context-based API)', ()
 
   test('re-resolves when item metadata changes', async () => {
     const { setProps, user } = render(
-      <TestComponentWithContext items={[{ id: 'item-1' }, { id: 'item-2' }, { id: 'item-3' }]} />,
+      <TestComponentWithExplicitRoot
+        items={[{ id: 'item-1' }, { id: 'item-2' }, { id: 'item-3' }]}
+      />,
     );
 
     setProps({
@@ -586,7 +602,7 @@ describe('useRovingTabIndexRoot + useRovingTabIndexItem (context-based API)', ()
     });
 
     act(() => {
-      screen.getByTestId('ctx-container').focus();
+      screen.getByTestId('root-param-container').focus();
     });
 
     await user.keyboard('{ArrowRight}');

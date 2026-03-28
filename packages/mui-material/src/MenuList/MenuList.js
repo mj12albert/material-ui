@@ -14,7 +14,7 @@ import {
   RovingTabIndexProvider,
   useRovingTabIndexRoot,
 } from '../utils/useRovingTabIndex';
-import { ownerWindow } from '../utils';
+import ownerWindow from '../utils/ownerWindow';
 import { useSelectFocusSource } from '../Select/utils/SelectFocusSourceContext';
 import MenuListContext from './MenuListContext';
 

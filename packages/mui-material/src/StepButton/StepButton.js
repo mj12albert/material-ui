@@ -56,6 +56,25 @@ const StepButtonRoot = styled(ButtonBase, {
   ],
 });
 
+const StepButtonWithRovingTabIndex = React.forwardRef(
+  function StepButtonWithRovingTabIndex(props, ref) {
+    // eslint-disable-next-line react/prop-types
+    const { children, disabled, index, ...other } = props;
+
+    const rovingTabIndexItemProps = useRovingTabIndexItem({
+      id: index,
+      ref,
+      disabled,
+    });
+
+    return (
+      <StepButtonRoot {...rovingTabIndexItemProps} {...other}>
+        {children}
+      </StepButtonRoot>
+    );
+  },
+);
+
 const StepButton = React.forwardRef(function StepButton(inProps, ref) {
   const props = useDefaultProps({ props: inProps, name: 'MuiStepButton' });
   const { children, className, icon, optional, ...other } = props;
@@ -78,27 +97,30 @@ const StepButton = React.forwardRef(function StepButton(inProps, ref) {
     <StepLabel {...childProps}>{children}</StepLabel>
   );
 
-  const rovingTabIndexItemProps = useRovingTabIndexItem({
-    id: index,
-    ref,
+  const stepButtonProps = {
+    internalNativeButton: true,
+    focusRipple: true,
     disabled,
-  });
+    TouchRippleProps: { className: classes.touchRipple },
+    className: clsx(classes.root, className),
+    ownerState,
+    'aria-selected': active,
+    'aria-posinset': index + 1,
+    'aria-setsize': totalSteps,
+    role: 'tab',
+    ...other,
+  };
+
+  if (isTabList) {
+    return (
+      <StepButtonWithRovingTabIndex {...stepButtonProps} index={index} ref={ref}>
+        {child}
+      </StepButtonWithRovingTabIndex>
+    );
+  }
 
   return (
-    <StepButtonRoot
-      internalNativeButton
-      focusRipple
-      disabled={disabled}
-      TouchRippleProps={{ className: classes.touchRipple }}
-      className={clsx(classes.root, className)}
-      ownerState={ownerState}
-      aria-selected={active}
-      aria-posinset={index + 1}
-      aria-setsize={totalSteps}
-      role="tab"
-      {...(isTabList ? rovingTabIndexItemProps : { ref, tabIndex: active ? 0 : -1 })}
-      {...other}
-    >
+    <StepButtonRoot ref={ref} tabIndex={active ? 0 : -1} {...stepButtonProps}>
       {child}
     </StepButtonRoot>
   );

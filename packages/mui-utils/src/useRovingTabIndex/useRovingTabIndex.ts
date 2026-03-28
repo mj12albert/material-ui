@@ -462,6 +462,9 @@ export function useRovingTabIndexItem<Key = unknown>(
       itemRef.current = elementNode;
 
       if (elementNode === null) {
+        // The focusable element can disappear while the hook owner stays mounted,
+        // so ref cleanup must eagerly unregister it. The effect cleanup below only
+        // covers hook teardown and item id changes.
         unregisterItem(item.id);
         return;
       }
@@ -474,13 +477,10 @@ export function useRovingTabIndexItem<Key = unknown>(
     [item.id, registerItem, unregisterItem],
   );
 
-  const handleRef = useForkRef(item.ref, handleNodeChange);
-  const mergedRef = React.useCallback<React.RefCallback<HTMLElement | null>>(
-    (elementNode) => {
-      handleRef?.(elementNode);
-    },
-    [handleRef],
-  );
+  // `UseRovingTabIndexItemReturn.ref` is always a callback ref. `useForkRef()` only returns
+  // `null` when every input ref is `null`/`undefined`, but this call always includes
+  // `handleNodeChange`, so the merged ref callback is guaranteed to exist.
+  const handleRef = useForkRef(item.ref, handleNodeChange)!;
 
   useEnhancedEffect(() => {
     if (!itemRef.current) {
@@ -517,7 +517,7 @@ export function useRovingTabIndexItem<Key = unknown>(
 
   return {
     onFocus,
-    ref: mergedRef,
+    ref: handleRef,
     tabIndex: isItemActive(item.id) ? 0 : -1,
   };
 }
@@ -560,6 +560,10 @@ export default function useRovingTabIndex<Key = unknown>(
     (item: RovingTabIndexItem<Key>) => {
       const normalizedItem = normalizeItem(item);
       const previousItem = getItemMap().get(normalizedItem.id);
+
+      // Parent-owned consumers (for example, Tabs) call `getItemProps()` during render.
+      // Registration intentionally converges in at most one extra render because
+      // `areItemsEquivalent()` short-circuits once the item map matches this render's item.
       renderedItemIdsRef.current.add(normalizedItem.id);
       itemExternalRefsRef.current.set(normalizedItem.id, normalizedItem.ref);
 

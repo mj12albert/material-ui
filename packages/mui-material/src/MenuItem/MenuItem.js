@@ -233,6 +233,8 @@ const MenuItem = React.forwardRef(function MenuItem(inProps, ref) {
   } else if (menuListContext?.variant === 'selectedMenu') {
     tabIndex = rovingTabIndexItemProps.tabIndex;
   } else if (!props.disabled || disabledItemsFocusable) {
+    // In `menu` variant, registration still drives arrow-key navigation even
+    // though each item keeps `tabIndex={-1}`.
     tabIndex = -1;
   }
 

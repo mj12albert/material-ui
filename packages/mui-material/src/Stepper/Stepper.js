@@ -64,6 +64,34 @@ const StepperRoot = styled('ol', {
 
 const defaultConnector = <StepConnector />;
 
+function StepperWithRovingTabIndex(props) {
+  // eslint-disable-next-line react/prop-types
+  const { children, className, component, forwardedRef, isRtl, orientation, ownerState, ...other } =
+    props;
+
+  const rovingTabIndex = useRovingTabIndexRoot({
+    orientation,
+    isRtl,
+  });
+  const rovingTabIndexContainerProps = rovingTabIndex.getContainerProps(forwardedRef);
+
+  return (
+    <RovingTabIndexProvider value={rovingTabIndex}>
+      <StepperRoot
+        as={component}
+        ownerState={ownerState}
+        className={className}
+        role="tablist"
+        aria-orientation={orientation}
+        {...rovingTabIndexContainerProps}
+        {...other}
+      >
+        {children}
+      </StepperRoot>
+    </RovingTabIndexProvider>
+  );
+}
+
 const Stepper = React.forwardRef(function Stepper(inProps, ref) {
   const isRtl = useRtl();
   const props = useDefaultProps({ props: inProps, name: 'MuiStepper' });
@@ -118,12 +146,6 @@ const Stepper = React.forwardRef(function Stepper(inProps, ref) {
     });
   });
 
-  const rovingTabIndex = useRovingTabIndexRoot({
-    orientation,
-    isRtl,
-  });
-  const rovingTabIndexContainerProps = rovingTabIndex.getContainerProps(ref);
-
   const contextValue = React.useMemo(
     () => ({
       activeStep,
@@ -137,24 +159,35 @@ const Stepper = React.forwardRef(function Stepper(inProps, ref) {
     [activeStep, alternativeLabel, connector, nonLinear, orientation, totalSteps, isTabList],
   );
 
-  return (
-    <StepperContextProvider value={contextValue}>
-      <RovingTabIndexProvider value={rovingTabIndex}>
+  if (!isTabList) {
+    return (
+      <StepperContextProvider value={contextValue}>
         <StepperRoot
           as={component}
           ownerState={ownerState}
           className={clsx(classes.root, className)}
           ref={ref}
-          {...(isTabList && {
-            role: 'tablist',
-            'aria-orientation': orientation,
-            ...rovingTabIndexContainerProps,
-          })}
           {...other}
         >
           {steps}
         </StepperRoot>
-      </RovingTabIndexProvider>
+      </StepperContextProvider>
+    );
+  }
+
+  return (
+    <StepperContextProvider value={contextValue}>
+      <StepperWithRovingTabIndex
+        forwardedRef={ref}
+        isRtl={isRtl}
+        className={clsx(classes.root, className)}
+        component={component}
+        orientation={orientation}
+        ownerState={ownerState}
+        {...other}
+      >
+        {steps}
+      </StepperWithRovingTabIndex>
     </StepperContextProvider>
   );
 });

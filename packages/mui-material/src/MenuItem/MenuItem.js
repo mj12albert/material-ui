@@ -10,6 +10,7 @@ import { useDefaultProps } from '../DefaultPropsProvider';
 import ListContext from '../List/ListContext';
 import ButtonBase from '../ButtonBase';
 import useEnhancedEffect from '../utils/useEnhancedEffect';
+import focusWithVisible from '../utils/focusWithVisible';
 import useForkRef from '../utils/useForkRef';
 import useId from '../utils/useId';
 import { useRovingTabIndexItem } from '../utils/useRovingTabIndex';
@@ -17,26 +18,8 @@ import { dividerClasses } from '../Divider';
 import { listItemIconClasses } from '../ListItemIcon';
 import { listItemTextClasses } from '../ListItemText';
 import MenuListContext from '../MenuList/MenuListContext';
+import { useSelectFocusSource } from '../Select/utils/SelectFocusSourceContext';
 import menuItemClasses, { getMenuItemUtilityClass } from './menuItemClasses';
-import { useSelectFocusSource } from '../Select';
-
-/**
- * If autoFocus is an object, it will attempt to call `element.focus()` with the options argument.
- * If the browser doesn't support the options argument, it will fall back to a simple `element.focus()` call.
- */
-function focusWithVisible(element, focusSource) {
-  if (focusSource == null) {
-    element.focus();
-    return;
-  }
-
-  try {
-    element.focus({ focusVisible: focusSource === 'keyboard' });
-  } catch (error) {
-    // If the browser doesn't support the focus options argument, fall back to a simple focus call.
-    element.focus();
-  }
-}
 
 export const overridesResolver = (props, styles) => {
   const { ownerState } = props;
@@ -210,13 +193,10 @@ const MenuItem = React.forwardRef(function MenuItem(inProps, ref) {
   const menuListContext = React.useContext(MenuListContext);
   const rovingItemId = useId();
   const disabledItemsFocusable = menuListContext?.disabledItemsFocusable ?? false;
-  const shouldAutoFocus =
-    autoFocus ||
-    (menuListContext?.autoFocusItem === true && menuListContext.activeItemId === rovingItemId);
 
   const menuItemRef = React.useRef(null);
   useEnhancedEffect(() => {
-    if (shouldAutoFocus) {
+    if (autoFocus) {
       if (menuItemRef.current) {
         focusWithVisible(menuItemRef.current, focusSource);
       } else if (process.env.NODE_ENV !== 'production') {
@@ -226,7 +206,7 @@ const MenuItem = React.forwardRef(function MenuItem(inProps, ref) {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shouldAutoFocus]);
+  }, [autoFocus]);
 
   const ownerState = {
     ...props,

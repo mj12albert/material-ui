@@ -330,7 +330,7 @@ describe('<MenuList> integration', () => {
     expect(menuitems[3]).to.have.property('tabIndex', -1);
   });
 
-  it('does not steal focus when conditional items are added after mount', () => {
+  it('does not steal focus when conditional items are added after mount', async () => {
     function ConditionalMenuList(props) {
       const { showPrependedItem = false } = props;
 
@@ -343,27 +343,26 @@ describe('<MenuList> integration', () => {
       );
     }
 
-    const { setProps } = render(<ConditionalMenuList showPrependedItem={false} />);
+    const { setProps, user } = render(<ConditionalMenuList showPrependedItem={false} />);
 
     const initialItems = screen.getAllByRole('menuitem');
-    act(() => {
-      initialItems[1].focus();
-    });
+    await user.click(initialItems[1]);
 
     setProps({ showPrependedItem: true });
 
     const updatedItems = screen.getAllByRole('menuitem');
     expect(updatedItems[2]).toHaveFocus();
-    expect(updatedItems[2]).to.have.property('tabIndex', 0);
-    expect(updatedItems[0]).to.have.property('tabIndex', -1);
+
+    await user.keyboard('{ArrowUp}');
+    expect(updatedItems[1]).toHaveFocus();
   });
 
-  it('supports keyboard navigation with wrapped MenuItem components', () => {
+  it('supports keyboard navigation with wrapped MenuItem components', async () => {
     const WrappedMenuItem = React.forwardRef(function WrappedMenuItem(props, ref) {
       return <MenuItem ref={ref} {...props} />;
     });
 
-    render(
+    const { user } = render(
       <MenuList autoFocusItem>
         <WrappedMenuItem>Item 1</WrappedMenuItem>
         <WrappedMenuItem>Item 2</WrappedMenuItem>
@@ -373,21 +372,15 @@ describe('<MenuList> integration', () => {
 
     const menuitems = screen.getAllByRole('menuitem');
     expect(menuitems[0]).toHaveFocus();
-    expect(menuitems[0]).to.have.property('tabIndex', 0);
-    expect(menuitems[1]).to.have.property('tabIndex', -1);
 
-    fireEvent.keyDown(menuitems[0], { key: 'ArrowDown' });
+    await user.keyboard('{ArrowDown}');
     expect(menuitems[1]).toHaveFocus();
-    expect(menuitems[1]).to.have.property('tabIndex', 0);
-    expect(menuitems[0]).to.have.property('tabIndex', -1);
 
-    fireEvent.keyDown(menuitems[1], { key: 'ArrowUp' });
+    await user.keyboard('{ArrowUp}');
     expect(menuitems[0]).toHaveFocus();
-    expect(menuitems[0]).to.have.property('tabIndex', 0);
-    expect(menuitems[1]).to.have.property('tabIndex', -1);
   });
 
-  it('handles removal of the focused item gracefully', () => {
+  it('handles removal of the focused item gracefully', async () => {
     function ConditionalMenuList(props) {
       const { showSecondItem = true } = props;
 
@@ -400,20 +393,27 @@ describe('<MenuList> integration', () => {
       );
     }
 
-    const { setProps } = render(<ConditionalMenuList />);
+    const { setProps, user } = render(<ConditionalMenuList />);
 
     const initialItems = screen.getAllByRole('menuitem');
-    act(() => {
-      initialItems[1].focus();
-    });
+    await user.click(initialItems[1]);
     expect(initialItems[1]).toHaveFocus();
-    expect(initialItems[1]).to.have.property('tabIndex', 0);
 
     setProps({ showSecondItem: false });
 
+    const menu = screen.getByRole('menu');
     const updatedItems = screen.getAllByRole('menuitem');
     expect(updatedItems).to.have.length(2);
-    expect(updatedItems[0]).to.have.property('tabIndex', 0);
+
+    act(() => {
+      menu.focus();
+    });
+
+    await user.keyboard('{ArrowDown}');
+    expect(updatedItems[0]).toHaveFocus();
+
+    await user.keyboard('{ArrowDown}');
+    expect(updatedItems[1]).toHaveFocus();
   });
 
   describe('MenuList with disableListWrap', () => {

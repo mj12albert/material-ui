@@ -102,7 +102,7 @@ const Menu = React.forwardRef(function Menu(inProps, ref) {
       });
 
       if (autoFocus) {
-        menuListActionsRef.current.focusIfNoActiveItem?.();
+        menuListActionsRef.current.focusAutoFocusTarget?.();
       }
     }
   };

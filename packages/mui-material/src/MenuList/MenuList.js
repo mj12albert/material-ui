@@ -5,6 +5,8 @@ import ownerDocument from '../utils/ownerDocument';
 import List from '../List';
 import getActiveElement from '../utils/getActiveElement';
 import getScrollbarSize from '../utils/getScrollbarSize';
+import focusWithVisible from '../utils/focusWithVisible';
+import useEventCallback from '../utils/useEventCallback';
 import useForkRef from '../utils/useForkRef';
 import useEnhancedEffect from '../utils/useEnhancedEffect';
 import {
@@ -13,6 +15,7 @@ import {
   useRovingTabIndexRoot,
 } from '../utils/useRovingTabIndex';
 import { ownerWindow } from '../utils';
+import { useSelectFocusSource } from '../Select/utils/SelectFocusSourceContext';
 import MenuListContext from './MenuListContext';
 
 function getItemText(itemOrElement) {
@@ -85,6 +88,7 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
   } = props;
   const listRef = React.useRef(null);
   const hasAutoFocusedRef = React.useRef(false);
+  const focusSource = useSelectFocusSource();
   const textCriteriaRef = React.useRef({
     keys: [],
     repeating: true,
@@ -113,33 +117,51 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
     orientation: 'vertical',
     shouldWrap: !disableListWrap,
   });
-  const { activeItemId, focusActiveItem, focusNext, getActiveItem, getContainerProps } =
-    rovingTabIndex;
+  const { activeItemId, focusNext, getActiveItem, getContainerProps } = rovingTabIndex;
 
-  useEnhancedEffect(() => {
-    if (!autoFocus) {
-      hasAutoFocusedRef.current = false;
-      return undefined;
-    }
-
-    if (hasAutoFocusedRef.current || !listRef.current) {
-      return undefined;
+  const focusAutoFocusTarget = useEventCallback((force = false) => {
+    if (!listRef.current || (!force && hasAutoFocusedRef.current)) {
+      return null;
     }
 
     if (autoFocusItem) {
-      const focusedItemId = focusActiveItem();
+      const activeItem = getActiveItem();
 
-      if (focusedItemId !== null) {
+      if (activeItem?.element) {
+        focusWithVisible(activeItem.element, focusSource);
         hasAutoFocusedRef.current = true;
-        return undefined;
+        return activeItem.element;
       }
+
+      if (!autoFocus) {
+        return null;
+      }
+
+      // Keep the list container focusable while waiting for items to register,
+      // or when there is no focusable item to move to.
+      listRef.current.focus();
+      return listRef.current;
+    }
+
+    if (!autoFocus) {
+      return null;
     }
 
     listRef.current.focus();
     hasAutoFocusedRef.current = true;
+    return listRef.current;
+  });
+
+  useEnhancedEffect(() => {
+    if (!autoFocus && !autoFocusItem) {
+      hasAutoFocusedRef.current = false;
+      return undefined;
+    }
+
+    focusAutoFocusTarget();
 
     return undefined;
-  }, [autoFocus, autoFocusItem, focusActiveItem]);
+  }, [activeItemId, autoFocus, autoFocusItem, focusAutoFocusTarget]);
 
   React.useImperativeHandle(
     actions,
@@ -156,28 +178,31 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
         }
         return listRef.current;
       },
-      focusIfNoActiveItem: () => {
-        if (!listRef.current || getActiveItem() !== null) {
+      focusAutoFocusTarget: () => {
+        if (!listRef.current) {
           return null;
         }
 
-        listRef.current.focus();
-        return listRef.current;
+        const currentFocus = getActiveElement(ownerDocument(listRef.current));
+
+        if (currentFocus && listRef.current.contains(currentFocus)) {
+          return currentFocus;
+        }
+
+        return focusAutoFocusTarget(true);
       },
     }),
-    [getActiveItem],
+    [focusAutoFocusTarget],
   );
 
   const rovingTabIndexContainerProps = getContainerProps();
   const handleRef = useForkRef(listRef, rovingTabIndexContainerProps.ref, ref);
   const menuListContextValue = React.useMemo(
     () => ({
-      activeItemId,
-      autoFocusItem,
       disabledItemsFocusable,
       variant,
     }),
-    [activeItemId, autoFocusItem, disabledItemsFocusable, variant],
+    [disabledItemsFocusable, variant],
   );
 
   const handleKeyDown = (event) => {

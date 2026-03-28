@@ -81,15 +81,31 @@ export interface UseRovingTabIndexItemReturn {
 
 const SUPPORTED_KEYS = ['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
 
-export const RovingTabIndexContext = React.createContext<UseRovingTabIndexRootReturn<any> | null>(
-  null,
-);
+type RovingTabIndexContextValue = UseRovingTabIndexRootReturn<unknown>;
+
+export interface RovingTabIndexProviderProps<Key = unknown> {
+  children?: React.ReactNode;
+  value: UseRovingTabIndexRootReturn<Key> | null;
+}
+
+export const RovingTabIndexContext = React.createContext<RovingTabIndexContextValue | null>(null);
 
 if (process.env.NODE_ENV !== 'production') {
   RovingTabIndexContext.displayName = 'RovingTabIndexContext';
 }
 
-export const RovingTabIndexProvider = RovingTabIndexContext.Provider;
+export function RovingTabIndexProvider<Key = unknown>(props: RovingTabIndexProviderProps<Key>) {
+  const { children, value } = props;
+
+  return React.createElement(
+    RovingTabIndexContext.Provider,
+    {
+      // The provider boundary erases the item id type; item hooks restore their local Key when reading it.
+      value: value as RovingTabIndexContextValue | null,
+    },
+    children,
+  );
+}
 
 /**
  * Provides roving tab index behavior for a composite container and its focusable children.
@@ -381,10 +397,7 @@ export function useRovingTabIndexItem<Key = unknown>(
   item: RovingTabIndexItem<Key>,
   rootParam?: UseRovingTabIndexRootReturn<Key> | null,
 ): UseRovingTabIndexItemReturn {
-  const rootFromContext = React.useContext(
-    RovingTabIndexContext,
-  ) as UseRovingTabIndexRootReturn<Key> | null;
-  const root = rootParam ?? rootFromContext;
+  const rootFromContext = React.useContext(RovingTabIndexContext);
   const itemRef = React.useRef<HTMLElement | null>(null);
   const normalizedItem = React.useMemo(
     () => ({
@@ -400,18 +413,53 @@ export function useRovingTabIndexItem<Key = unknown>(
   );
   const normalizedItemRef = React.useRef(normalizedItem);
   normalizedItemRef.current = normalizedItem;
-  const registerItem = root?.registerItem;
-  const unregisterItem = root?.unregisterItem;
-  const setActiveItemId = root?.setActiveItemId;
-  const isItemActive = root?.isItemActive;
+  const registerItem = React.useCallback(
+    (registeredItem: RegisteredRovingTabIndexItem<Key>) => {
+      if (rootParam != null) {
+        rootParam.registerItem(registeredItem);
+        return;
+      }
+
+      rootFromContext?.registerItem(registeredItem);
+    },
+    [rootFromContext, rootParam],
+  );
+  const unregisterItem = React.useCallback(
+    (itemId: Key) => {
+      if (rootParam != null) {
+        rootParam.unregisterItem(itemId);
+        return;
+      }
+
+      rootFromContext?.unregisterItem(itemId);
+    },
+    [rootFromContext, rootParam],
+  );
+  const setActiveItemId = React.useCallback(
+    (itemId: Key | null) => {
+      if (rootParam != null) {
+        rootParam.setActiveItemId(itemId);
+        return;
+      }
+
+      rootFromContext?.setActiveItemId(itemId);
+    },
+    [rootFromContext, rootParam],
+  );
+  const isItemActive = React.useCallback(
+    (itemId: Key) => {
+      if (rootParam != null) {
+        return rootParam.isItemActive(itemId);
+      }
+
+      return rootFromContext?.isItemActive(itemId) ?? false;
+    },
+    [rootFromContext, rootParam],
+  );
 
   const handleNodeChange = React.useCallback(
     (elementNode: HTMLElement | null) => {
       itemRef.current = elementNode;
-
-      if (!registerItem || !unregisterItem) {
-        return;
-      }
 
       if (elementNode === null) {
         unregisterItem(item.id);
@@ -435,7 +483,7 @@ export function useRovingTabIndexItem<Key = unknown>(
   );
 
   useEnhancedEffect(() => {
-    if (!registerItem || !itemRef.current) {
+    if (!itemRef.current) {
       return;
     }
 
@@ -453,10 +501,6 @@ export function useRovingTabIndexItem<Key = unknown>(
   ]);
 
   useEnhancedEffect(() => {
-    if (!unregisterItem) {
-      return undefined;
-    }
-
     const itemId = item.id;
 
     return () => {
@@ -466,7 +510,7 @@ export function useRovingTabIndexItem<Key = unknown>(
 
   const onFocus = React.useCallback(
     (_event: React.FocusEvent<HTMLElement>) => {
-      setActiveItemId?.(item.id);
+      setActiveItemId(item.id);
     },
     [item.id, setActiveItemId],
   );
@@ -474,7 +518,7 @@ export function useRovingTabIndexItem<Key = unknown>(
   return {
     onFocus,
     ref: mergedRef,
-    tabIndex: isItemActive?.(item.id) ? 0 : -1,
+    tabIndex: isItemActive(item.id) ? 0 : -1,
   };
 }
 
@@ -502,7 +546,7 @@ export default function useRovingTabIndex<Key = unknown>(
   const renderedItemIdsRef = React.useRef<Set<Key>>(new Set());
   renderedItemIdsRef.current = new Set();
 
-  React.useEffect(() => {
+  useEnhancedEffect(() => {
     getItemMap().forEach((_, itemId) => {
       if (!renderedItemIdsRef.current.has(itemId)) {
         unregisterItem(itemId);

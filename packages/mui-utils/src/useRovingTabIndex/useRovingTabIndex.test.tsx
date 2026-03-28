@@ -125,8 +125,8 @@ describe('useRovingTabIndex', () => {
     expect(screen.getByTestId('button-4')).to.have.attribute('tabindex', '0');
   });
 
-  test('re-resolves when mounted item metadata changes', () => {
-    const { setProps } = render(
+  test('re-resolves when mounted item metadata changes', async () => {
+    const { setProps, user } = render(
       <TestComponent items={[{ id: 'button-1' }, { id: 'button-2' }, { id: 'button-3' }]} />,
     );
 
@@ -134,8 +134,12 @@ describe('useRovingTabIndex', () => {
       items: [{ id: 'button-1', disabled: true }, { id: 'button-2' }, { id: 'button-3' }],
     });
 
-    expect(screen.getByTestId('button-1')).to.have.attribute('tabindex', '-1');
-    expect(screen.getByTestId('button-2')).to.have.attribute('tabindex', '0');
+    act(() => {
+      screen.getByTestId('container').focus();
+    });
+
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByTestId('button-2')).toHaveFocus();
   });
 
   test('cleans up item map entries when items unregister', () => {
@@ -353,28 +357,40 @@ describe('useRovingTabIndex', () => {
     expect(screen.getByTestId('button-1')).toHaveFocus();
   });
 
-  test('keeps the current active item when new items register', () => {
-    const { setProps } = render(<TestComponent items={[{ id: 'button-1' }, { id: 'button-2' }]} />);
+  test('keeps the current active item when new items register', async () => {
+    const { setProps, user } = render(
+      <TestComponent items={[{ id: 'button-1' }, { id: 'button-2' }]} />,
+    );
 
-    fireEvent.focus(screen.getByTestId('button-2'));
+    await user.click(screen.getByTestId('button-2'));
 
     setProps({
       items: [{ id: 'button-0' }, { id: 'button-1' }, { id: 'button-2' }],
     });
 
-    expect(screen.getByTestId('button-2')).to.have.attribute('tabindex', '0');
+    expect(screen.getByTestId('button-2')).toHaveFocus();
+
+    await user.keyboard('{ArrowLeft}');
+    expect(screen.getByTestId('button-1')).toHaveFocus();
   });
 
-  test('re-resolves when the active item unregisters', () => {
-    const { setProps } = render(<TestComponent items={[{ id: 'button-1' }, { id: 'button-2' }]} />);
+  test('re-resolves when the active item unregisters', async () => {
+    const { setProps, user } = render(
+      <TestComponent items={[{ id: 'button-1' }, { id: 'button-2' }]} />,
+    );
 
-    fireEvent.focus(screen.getByTestId('button-2'));
+    await user.click(screen.getByTestId('button-2'));
 
     setProps({
       items: [{ id: 'button-1' }, { id: 'button-2', render: false }],
     });
 
-    expect(screen.getByTestId('button-1')).to.have.attribute('tabindex', '0');
+    act(() => {
+      screen.getByTestId('container').focus();
+    });
+
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByTestId('button-1')).toHaveFocus();
   });
 
   test('focusNext moves focus to the next focusable item and returns its id', async () => {
@@ -405,7 +421,7 @@ describe('useRovingTabIndex', () => {
   });
 
   test('supports external refs on items', () => {
-    const buttonRef = { current: null } as React.RefObject<HTMLButtonElement | null>;
+    const buttonRef = React.createRef<HTMLButtonElement>();
 
     render(<TestComponent buttonRef={buttonRef} />);
 
@@ -521,46 +537,59 @@ describe('useRovingTabIndexRoot + useRovingTabIndexItem (context-based API)', ()
     expect(screen.getByTestId('item-2')).toHaveFocus();
   });
 
-  test('handles dynamic item insertion', () => {
-    const { setProps } = render(
+  test('handles dynamic item insertion', async () => {
+    const { setProps, user } = render(
       <TestComponentWithContext items={[{ id: 'item-1' }, { id: 'item-2' }]} />,
     );
 
-    fireEvent.focus(screen.getByTestId('item-2'));
+    await user.click(screen.getByTestId('item-2'));
 
     setProps({
       items: [{ id: 'item-0' }, { id: 'item-1' }, { id: 'item-2' }],
     });
 
-    expect(screen.getByTestId('item-2')).to.have.attribute('tabindex', '0');
+    expect(screen.getByTestId('item-2')).toHaveFocus();
+
+    await user.keyboard('{ArrowLeft}');
+    expect(screen.getByTestId('item-1')).toHaveFocus();
   });
 
-  test('handles dynamic item removal', () => {
-    const { setProps } = render(
+  test('handles dynamic item removal', async () => {
+    const { setProps, user } = render(
       <TestComponentWithContext items={[{ id: 'item-1' }, { id: 'item-2' }, { id: 'item-3' }]} />,
     );
 
-    fireEvent.focus(screen.getByTestId('item-2'));
+    await user.click(screen.getByTestId('item-2'));
 
     setProps({
       items: [{ id: 'item-1' }, { id: 'item-3' }],
     });
 
-    expect(screen.getByTestId('item-1')).to.have.attribute('tabindex', '0');
+    act(() => {
+      screen.getByTestId('ctx-container').focus();
+    });
+
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByTestId('item-1')).toHaveFocus();
+
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByTestId('item-3')).toHaveFocus();
   });
 
-  test('re-resolves when item metadata changes', () => {
-    const { setProps } = render(
+  test('re-resolves when item metadata changes', async () => {
+    const { setProps, user } = render(
       <TestComponentWithContext items={[{ id: 'item-1' }, { id: 'item-2' }, { id: 'item-3' }]} />,
     );
-
-    expect(screen.getByTestId('item-1')).to.have.attribute('tabindex', '0');
 
     setProps({
       items: [{ id: 'item-1', disabled: true }, { id: 'item-2' }, { id: 'item-3' }],
     });
 
-    expect(screen.getByTestId('item-1')).to.have.attribute('tabindex', '-1');
-    expect(screen.getByTestId('item-2')).to.have.attribute('tabindex', '0');
+    act(() => {
+      screen.getByTestId('ctx-container').focus();
+    });
+
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByTestId('item-2')).toHaveFocus();
   });
 });

@@ -148,6 +148,30 @@ describe.skipIf(isSafari)('<Tabs />', () => {
       expect(tabElements[1]).to.have.attribute('tabIndex', '-1');
     });
 
+    it('should preserve keyboard navigation for wrapped Tab children', async () => {
+      const WrappedTab = React.forwardRef(function WrappedTab(props, ref) {
+        return <Tab ref={ref} {...props} />;
+      });
+
+      const { user } = render(
+        <Tabs value={0}>
+          <WrappedTab />
+          <WrappedTab />
+        </Tabs>,
+      );
+
+      const tabElements = screen.getAllByRole('tab');
+
+      await user.tab();
+      expect(tabElements[0]).toHaveFocus();
+      expect(tabElements[0]).to.have.attribute('tabIndex', '0');
+
+      await user.keyboard('{ArrowRight}');
+      expect(tabElements[1]).toHaveFocus();
+      expect(tabElements[1]).to.have.attribute('tabIndex', '0');
+      expect(tabElements[0]).to.have.attribute('tabIndex', '-1');
+    });
+
     it('should add tabindex="0" to the focused tab', async () => {
       const { user } = render(
         <Tabs value={0}>
@@ -249,6 +273,31 @@ describe.skipIf(isSafari)('<Tabs />', () => {
       expect(screen.getAllByRole('tab').map((tab) => tab.tabIndex)).to.have.ordered.members([
         0, -1,
       ]);
+    });
+
+    it('keeps the focused tab in tab order when the selected value changes externally', async () => {
+      const { setProps, user } = render(
+        <Tabs value={0}>
+          <Tab />
+          <Tab />
+          <Tab />
+        </Tabs>,
+      );
+
+      const tabElements = screen.getAllByRole('tab');
+
+      await user.tab();
+      await user.keyboard('{ArrowRight}{ArrowRight}');
+
+      expect(tabElements[2]).toHaveFocus();
+      expect(tabElements[2]).to.have.attribute('tabIndex', '0');
+      expect(tabElements[0]).to.have.attribute('tabIndex', '-1');
+
+      setProps({ value: 1 });
+
+      expect(tabElements[2]).toHaveFocus();
+      expect(tabElements[2]).to.have.attribute('tabIndex', '0');
+      expect(tabElements[1]).to.have.attribute('tabIndex', '-1');
     });
   });
 
@@ -446,6 +495,7 @@ describe.skipIf(isSafari)('<Tabs />', () => {
           'You can provide one of the following values: 1, 3',
           // React Strict Mode runs mount effects twice
           reactMajor >= 18 && 'You can provide one of the following values: 1, 3',
+          'You can provide one of the following values: 1, 3',
           'You can provide one of the following values: 1, 3',
           'You can provide one of the following values: 1, 3',
         ]);

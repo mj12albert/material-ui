@@ -559,6 +559,10 @@ Popover.propTypes /* remove-proptypes */ = {
   /**
    * If `true`, the modal will not automatically shift focus to itself when it opens, and
    * replace it to the last focused element when it closes.
+   * This also works correctly with any modal children that have the `disableAutoFocus` prop.
+   *
+   * Generally this should never be set to `true` as it makes the modal less
+   * accessible to assistive technologies, like screen readers.
    * @default false
    */
   disableAutoFocus: PropTypes.bool,

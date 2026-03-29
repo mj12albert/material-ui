@@ -1,6 +1,8 @@
 'use client';
 import * as React from 'react';
-
+/**
+ * @ignore - internal component.
+ */
 const MenuListContext = React.createContext(null);
 
 if (process.env.NODE_ENV !== 'production') {

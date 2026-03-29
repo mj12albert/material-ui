@@ -278,7 +278,7 @@ MenuList.propTypes /* remove-proptypes */ = {
   // │    To update them, edit the d.ts file and run `pnpm proptypes`.     │
   // └─────────────────────────────────────────────────────────────────────┘
   /**
-   * If `true`, will focus the `[role="menu"]` container.
+   * If `true`, will focus the `[role="menu"]` container and move into tab order.
    * @default false
    */
   autoFocus: PropTypes.bool,
@@ -292,10 +292,6 @@ MenuList.propTypes /* remove-proptypes */ = {
    * MenuList contents, normally `MenuItem`s.
    */
   children: PropTypes.node,
-  /**
-   * Override or extend the styles applied to the component.
-   */
-  classes: PropTypes.object,
   /**
    * @ignore
    */
@@ -315,7 +311,8 @@ MenuList.propTypes /* remove-proptypes */ = {
    */
   onKeyDown: PropTypes.func,
   /**
-   * The variant to use. Use `menu` to prevent selected items from impacting the initial focus.
+   * The variant to use. Use `menu` to prevent selected items from impacting the initial focus
+   * and the vertical alignment relative to the anchor element.
    * @default 'selectedMenu'
    */
   variant: PropTypes.oneOf(['menu', 'selectedMenu']),

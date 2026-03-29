@@ -65,6 +65,28 @@ function isItemFocusableWithTextCriteria(item, criteria) {
   return isRovingTabIndexItemFocusable(item);
 }
 
+// Menu auto-focus is not always keyboard-driven. On open we often move focus to the
+// active item programmatically so arrow-key navigation starts from the right place,
+// but in `variant="menu"` the selected item is still the intended visual highlight.
+//
+// If we mark that programmatic focus as focus-visible when there is no known keyboard
+// focus source, the first item can incorrectly pick up `Mui-focusVisible` and visually
+// compete with the selected item. Preserve focus-visible only when the caller gave us
+// an explicit focus source (for example Select forwarding keyboard intent); otherwise
+// focus the item without requesting focus-visible styling.
+function focusAutoFocusItem(element, focusSource) {
+  if (focusSource != null) {
+    focusWithVisible(element, focusSource);
+    return;
+  }
+
+  try {
+    element.focus({ focusVisible: false });
+  } catch (error) {
+    element.focus();
+  }
+}
+
 /**
  * A permanently displayed menu following https://www.w3.org/WAI/ARIA/apg/patterns/menu-button/.
  * It's exposed to help customization of the [`Menu`](/material-ui/api/menu/) component if you
@@ -128,7 +150,7 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
       const activeItem = getActiveItem();
 
       if (activeItem?.element) {
-        focusWithVisible(activeItem.element, focusSource);
+        focusAutoFocusItem(activeItem.element, focusSource);
         hasAutoFocusedRef.current = true;
         return activeItem.element;
       }

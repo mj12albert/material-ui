@@ -448,10 +448,14 @@ export function useRovingTabIndexItem<Key = unknown>(
       itemRef.current = elementNode;
 
       if (elementNode === null) {
-        // The focusable element can disappear while the hook owner stays mounted,
-        // so ref cleanup must eagerly unregister it. The effect cleanup below only
-        // covers hook teardown and item id changes.
-        unregisterItem(item.id);
+        // Ref detachment runs during commit. Deferring the unregister avoids nested
+        // updates while still covering the case where the focusable element
+        // disappears but the hook owner stays mounted.
+        queueMicrotask(() => {
+          if (itemRef.current === null) {
+            unregisterItem(item.id);
+          }
+        });
         return;
       }
 

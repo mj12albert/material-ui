@@ -47,8 +47,6 @@ const Grow = React.forwardRef(function Grow(props, ref) {
     onExiting,
     style,
     timeout = 'auto',
-    // eslint-disable-next-line react/prop-types
-    TransitionComponent = Transition,
     ...other
   } = props;
   const timer = useTimeout();
@@ -156,7 +154,7 @@ const Grow = React.forwardRef(function Grow(props, ref) {
   };
 
   return (
-    <TransitionComponent
+    <Transition
       appear={appear}
       in={inProp}
       nodeRef={nodeRef}
@@ -187,7 +185,7 @@ const Grow = React.forwardRef(function Grow(props, ref) {
           ...restChildProps,
         });
       }}
-    </TransitionComponent>
+    </Transition>
   );
 });
 

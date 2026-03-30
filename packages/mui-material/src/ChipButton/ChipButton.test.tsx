@@ -117,7 +117,6 @@ describe('<ChipButton />', () => {
 
   describe('type behavior', () => {
     it('always renders type="button" for native button roots', () => {
-      // @ts-expect-error `type` is never on ChipButtonProps. This covers JS callers.
       render(<Chip label="Chip" action={<ChipButton onClick={() => {}} type="submit" />} />);
 
       const button = screen.getByRole('button');

@@ -62,6 +62,7 @@ const ChipLink = React.forwardRef<HTMLAnchorElement, ChipLinkProps>(
     const {
       children,
       className,
+      disableRipple = false,
       href,
       insideChip = false,
       onClick,
@@ -88,6 +89,7 @@ const ChipLink = React.forwardRef<HTMLAnchorElement, ChipLinkProps>(
     }
 
     const { handleBlur, rippleHandlers, enableTouchRipple, touchRippleRef } = useChipInteraction({
+      disableRipple,
       onBlur,
       onMouseDown,
       onMouseUp,
@@ -137,6 +139,11 @@ ChipLink.propTypes /* remove-proptypes */ = {
    * @ignore
    */
   className: PropTypes.string,
+  /**
+   * If `true`, the ripple effect is disabled.
+   * @default false
+   */
+  disableRipple: PropTypes.bool,
   /**
    * The URL to link to.
    */

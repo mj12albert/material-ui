@@ -332,9 +332,6 @@ export function generatePropTypes(
   if (shouldInclude) {
     filteredNodes = filteredNodes.filter((type) => shouldInclude(type));
   }
-  // Filter out props whose type is only `undefined` (e.g. from `never | undefined`).
-  // There is no meaningful PropTypes validator for a prop that can only be `undefined`.
-  filteredNodes = filteredNodes.filter((type) => type.propType.type !== 'UndefinedNode');
 
   if (filteredNodes.length === 0) {
     return '';

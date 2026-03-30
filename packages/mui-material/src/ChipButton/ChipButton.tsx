@@ -71,6 +71,7 @@ const ChipButton = React.forwardRef(function ChipButton(
     className,
     component,
     disabled: disabledProp,
+    disableRipple = false,
     focusableWhenDisabled = true,
     insideChip = false,
     nativeButton: nativeButtonProp,
@@ -104,6 +105,7 @@ const ChipButton = React.forwardRef(function ChipButton(
 
   const { handleBlur, rippleHandlers, enableTouchRipple, touchRippleRef } = useChipInteraction({
     disabled,
+    disableRipple,
     onBlur,
     onMouseDown,
     onMouseUp,
@@ -182,6 +184,11 @@ ChipButton.propTypes /* remove-proptypes */ = {
    * @default false
    */
   disabled: PropTypes.bool,
+  /**
+   * If `true`, the ripple effect is disabled.
+   * @default false
+   */
+  disableRipple: PropTypes.bool,
   /**
    * If `true`, the disabled button can receive focus.
    * @default true

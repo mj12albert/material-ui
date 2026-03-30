@@ -16,6 +16,11 @@ export interface ChipButtonOwnProps {
    */
   disabled?: boolean | undefined;
   /**
+   * If `true`, the ripple effect is disabled.
+   * @default false
+   */
+  disableRipple?: boolean | undefined;
+  /**
    * If `true`, the disabled button can receive focus.
    * @default true
    */
@@ -55,26 +60,6 @@ export interface ChipButtonOwnProps {
    * @ignore
    */
   tabIndex?: number | undefined;
-  /**
-   * @ignore
-   */
-  children?: never | undefined;
-  /**
-   * @ignore
-   */
-  type?: never | undefined;
-  /**
-   * @ignore
-   */
-  color?: never | undefined;
-  /**
-   * @ignore
-   */
-  href?: never | undefined;
-  /**
-   * @ignore
-   */
-  to?: never | undefined;
 }
 
 export interface ChipButtonTypeMap<
@@ -96,9 +81,6 @@ export type ChipButtonProps<
   component?: React.ElementType | undefined;
 };
 
-export interface ChipButtonOwnerState extends Omit<
-  ChipButtonProps,
-  'children' | 'type' | 'color' | 'href' | 'to'
-> {
+export interface ChipButtonOwnerState extends ChipButtonProps {
   component?: React.ElementType | undefined;
 }

@@ -9,6 +9,11 @@ export interface ChipLinkOwnProps {
    */
   classes?: Partial<ChipLinkClasses> | undefined;
   /**
+   * If `true`, the ripple effect is disabled.
+   * @default false
+   */
+  disableRipple?: boolean | undefined;
+  /**
    * The URL to link to.
    */
   href: string;

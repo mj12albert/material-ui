@@ -70,26 +70,6 @@ export interface ChipDeleteOwnProps {
    * The system prop that allows defining system overrides as well as additional CSS styles.
    */
   sx?: SxProps<Theme> | undefined;
-  /**
-   * @ignore
-   */
-  children?: never | undefined;
-  /**
-   * @ignore
-   */
-  type?: never | undefined;
-  /**
-   * @ignore
-   */
-  color?: never | undefined;
-  /**
-   * @ignore
-   */
-  href?: never | undefined;
-  /**
-   * @ignore
-   */
-  to?: never | undefined;
 }
 
 export interface ChipDeleteTypeMap<
@@ -111,10 +91,7 @@ export type ChipDeleteProps<
   component?: React.ElementType | undefined;
 };
 
-export interface ChipDeleteOwnerState extends Omit<
-  ChipDeleteProps,
-  'color' | 'children' | 'type' | 'href' | 'to'
-> {
+export interface ChipDeleteOwnerState extends Omit<ChipDeleteProps, 'color'> {
   color: string;
   size: string;
   variant: string;

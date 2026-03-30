@@ -167,6 +167,12 @@ export default function MaterialUiInteractiveChips() {
             action={<ChipButton onClick={() => {}} />}
             endAdornment={<ChipDelete onClick={() => {}} />}
           />
+          <Chip
+            label="Small + disableRipple"
+            size="small"
+            action={<ChipButton onClick={() => {}} disableRipple />}
+            endAdornment={<ChipDelete onClick={() => {}} />}
+          />
         </Section>
 
         <Section title="With startAdornment (ChipDelete)">
@@ -280,6 +286,11 @@ export default function MaterialUiInteractiveChips() {
           <Chip
             label="Deletable link"
             action={<ChipLink href="#chip-link" />}
+            endAdornment={<ChipDelete onClick={() => {}} />}
+          />
+          <Chip
+            label="No ripple"
+            action={<ChipLink href="#chip-link" disableRipple />}
             endAdornment={<ChipDelete onClick={() => {}} />}
           />
         </Section>

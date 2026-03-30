@@ -6,7 +6,7 @@ import elementAcceptingRef from '@mui/utils/elementAcceptingRef';
 import getReactElementRef from '@mui/utils/getReactElementRef';
 import { Transition } from 'react-transition-group';
 import { useTheme } from '../zero-styled';
-import { getTransitionProps, reflow } from '../transitions/utils';
+import { normalizedTransitionCallback, getTransitionProps, reflow } from '../transitions/utils';
 import useForkRef from '../utils/useForkRef';
 
 function getScale(value) {
@@ -23,15 +23,6 @@ const styles = {
     transform: 'none',
   },
 };
-
-/*
- TODO v6: remove
- Conditionally apply a workaround for the CSS transition bug in Safari 15.4 / WebKit browsers.
- */
-const isWebKit154 =
-  typeof navigator !== 'undefined' &&
-  /^((?!chrome|android).)*(safari|mobile)/i.test(navigator.userAgent) &&
-  /(os |version\/)15(.|_)4/i.test(navigator.userAgent);
 
 /**
  * The Grow transition is used by the [Tooltip](/material-ui/react-tooltip/) and
@@ -64,22 +55,9 @@ const Grow = React.forwardRef(function Grow(props, ref) {
   const nodeRef = React.useRef(null);
   const handleRef = useForkRef(nodeRef, getReactElementRef(children), ref);
 
-  const normalizedTransitionCallback = (callback) => (maybeIsAppearing) => {
-    if (callback) {
-      const node = nodeRef.current;
+  const handleEntering = normalizedTransitionCallback(nodeRef, onEntering);
 
-      // onEnterXxx and onExitXxx callbacks have a different arguments.length value.
-      if (maybeIsAppearing === undefined) {
-        callback(node);
-      } else {
-        callback(node, maybeIsAppearing);
-      }
-    }
-  };
-
-  const handleEntering = normalizedTransitionCallback(onEntering);
-
-  const handleEnter = normalizedTransitionCallback((node, isAppearing) => {
+  const handleEnter = normalizedTransitionCallback(nodeRef, (node, isAppearing) => {
     reflow(node); // So the animation always start from the start.
 
     const {
@@ -107,7 +85,7 @@ const Grow = React.forwardRef(function Grow(props, ref) {
         delay,
       }),
       theme.transitions.create('transform', {
-        duration: isWebKit154 ? duration : duration * 0.666,
+        duration: duration * 0.666,
         delay,
         easing: transitionTimingFunction,
       }),
@@ -118,11 +96,11 @@ const Grow = React.forwardRef(function Grow(props, ref) {
     }
   });
 
-  const handleEntered = normalizedTransitionCallback(onEntered);
+  const handleEntered = normalizedTransitionCallback(nodeRef, onEntered);
 
-  const handleExiting = normalizedTransitionCallback(onExiting);
+  const handleExiting = normalizedTransitionCallback(nodeRef, onExiting);
 
-  const handleExit = normalizedTransitionCallback((node) => {
+  const handleExit = normalizedTransitionCallback(nodeRef, (node) => {
     const {
       duration: transitionDuration,
       delay,
@@ -148,8 +126,8 @@ const Grow = React.forwardRef(function Grow(props, ref) {
         delay,
       }),
       theme.transitions.create('transform', {
-        duration: isWebKit154 ? duration : duration * 0.666,
-        delay: isWebKit154 ? delay : delay || duration * 0.333,
+        duration: duration * 0.666,
+        delay: delay || duration * 0.333,
         easing: transitionTimingFunction,
       }),
     ].join(',');
@@ -162,7 +140,7 @@ const Grow = React.forwardRef(function Grow(props, ref) {
     }
   });
 
-  const handleExited = normalizedTransitionCallback(onExited);
+  const handleExited = normalizedTransitionCallback(nodeRef, onExited);
 
   const handleAddEndListener = (next) => {
     if (timeout === 'auto') {

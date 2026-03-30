@@ -283,7 +283,6 @@ describe('<Slide />', () => {
     const FakeDiv = React.forwardRef(({ rect, ...props }, ref) => {
       const stubBoundingClientRect = (element) => {
         if (element !== null) {
-          element.fakeTransform = 'none';
           try {
             stub(element, 'getBoundingClientRect').callsFake(() => {
               const r = {
@@ -587,21 +586,27 @@ describe('<Slide />', () => {
         expect(child.style.transform).not.to.equal(undefined);
       });
 
-      it('should take existing transform into account', () => {
-        const element = {
-          fakeTransform: 'transform matrix(1, 0, 0, 1, 0, 420)',
-          getBoundingClientRect: () => ({
-            width: 500,
-            height: 300,
-            left: 300,
-            right: 800,
-            top: 1200,
-            bottom: 1500,
-          }),
-          style: {},
-        };
-        setTranslateValue('up', element);
-        expect(element.style.transform).to.equal(`translateY(${globalThis.innerHeight - 780}px)`);
+      // getComputedStyle in a real browser resolves inline transforms to matrix() format,
+      // which the component parses to account for existing offsets. jsdom does not resolve
+      // CSS values, so this test only runs in browser environments.
+      it.skipIf(isJsdom())('should take existing transform into account', function test() {
+        const element = document.createElement('div');
+        document.body.appendChild(element);
+        stub(element, 'getBoundingClientRect').callsFake(() => ({
+          width: 500,
+          height: 300,
+          left: 300,
+          right: 800,
+          top: 1200,
+          bottom: 1500,
+        }));
+        element.style.transform = 'matrix(1, 0, 0, 1, 0, 420)';
+        try {
+          setTranslateValue('up', element);
+          expect(element.style.transform).to.equal(`translateY(${globalThis.innerHeight - 780}px)`);
+        } finally {
+          document.body.removeChild(element);
+        }
       });
 
       it('should do nothing when visible', () => {

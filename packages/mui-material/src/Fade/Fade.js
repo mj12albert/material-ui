@@ -5,7 +5,7 @@ import { Transition } from 'react-transition-group';
 import elementAcceptingRef from '@mui/utils/elementAcceptingRef';
 import getReactElementRef from '@mui/utils/getReactElementRef';
 import { useTheme } from '../zero-styled';
-import { reflow, getTransitionProps } from '../transitions/utils';
+import { normalizedTransitionCallback, reflow, getTransitionProps } from '../transitions/utils';
 import useForkRef from '../utils/useForkRef';
 
 const styles = {
@@ -47,26 +47,12 @@ const Fade = React.forwardRef(function Fade(props, ref) {
     ...other
   } = props;
 
-  const enableStrictModeCompat = true;
   const nodeRef = React.useRef(null);
   const handleRef = useForkRef(nodeRef, getReactElementRef(children), ref);
 
-  const normalizedTransitionCallback = (callback) => (maybeIsAppearing) => {
-    if (callback) {
-      const node = nodeRef.current;
+  const handleEntering = normalizedTransitionCallback(nodeRef, onEntering);
 
-      // onEnterXxx and onExitXxx callbacks have a different arguments.length value.
-      if (maybeIsAppearing === undefined) {
-        callback(node);
-      } else {
-        callback(node, maybeIsAppearing);
-      }
-    }
-  };
-
-  const handleEntering = normalizedTransitionCallback(onEntering);
-
-  const handleEnter = normalizedTransitionCallback((node, isAppearing) => {
+  const handleEnter = normalizedTransitionCallback(nodeRef, (node, isAppearing) => {
     reflow(node); // So the animation always start from the start.
 
     const transitionProps = getTransitionProps(
@@ -76,7 +62,6 @@ const Fade = React.forwardRef(function Fade(props, ref) {
       },
     );
 
-    node.style.webkitTransition = theme.transitions.create('opacity', transitionProps);
     node.style.transition = theme.transitions.create('opacity', transitionProps);
 
     if (onEnter) {
@@ -84,11 +69,11 @@ const Fade = React.forwardRef(function Fade(props, ref) {
     }
   });
 
-  const handleEntered = normalizedTransitionCallback(onEntered);
+  const handleEntered = normalizedTransitionCallback(nodeRef, onEntered);
 
-  const handleExiting = normalizedTransitionCallback(onExiting);
+  const handleExiting = normalizedTransitionCallback(nodeRef, onExiting);
 
-  const handleExit = normalizedTransitionCallback((node) => {
+  const handleExit = normalizedTransitionCallback(nodeRef, (node) => {
     const transitionProps = getTransitionProps(
       { style, timeout, easing },
       {
@@ -96,7 +81,6 @@ const Fade = React.forwardRef(function Fade(props, ref) {
       },
     );
 
-    node.style.webkitTransition = theme.transitions.create('opacity', transitionProps);
     node.style.transition = theme.transitions.create('opacity', transitionProps);
 
     if (onExit) {
@@ -104,7 +88,7 @@ const Fade = React.forwardRef(function Fade(props, ref) {
     }
   });
 
-  const handleExited = normalizedTransitionCallback(onExited);
+  const handleExited = normalizedTransitionCallback(nodeRef, onExited);
 
   const handleAddEndListener = (next) => {
     if (addEndListener) {
@@ -117,7 +101,7 @@ const Fade = React.forwardRef(function Fade(props, ref) {
     <TransitionComponent
       appear={appear}
       in={inProp}
-      nodeRef={enableStrictModeCompat ? nodeRef : undefined}
+      nodeRef={nodeRef}
       onEnter={handleEnter}
       onEntered={handleEntered}
       onEntering={handleEntering}

@@ -13,21 +13,28 @@ import { useTheme } from '../zero-styled';
 import { normalizedTransitionCallback, reflow, getTransitionProps } from '../transitions/utils';
 import { ownerWindow } from '../utils';
 
+const hiddenStyles = { visibility: 'hidden' };
+
 // Translate the node so it can't be seen on the screen.
 // Later, we're going to translate the node back to its original location with `none`.
 function getTranslateValue(direction, node, resolvedContainer) {
   const containerRect = resolvedContainer && resolvedContainer.getBoundingClientRect();
   const containerWindow = ownerWindow(node);
 
-  // Clear the inline transform before reading layout and computed style so we
-  // compute from the element's natural position, not its previous off-screen
-  // translation. Without this, the offset compounds on each recomputation.
+  // Clear the inline transform and transition before reading layout and computed
+  // style so we compute from the element's natural position, not its previous
+  // off-screen translation. The transition must also be cleared, otherwise the
+  // browser may report an animated intermediate value from a still-running
+  // enter transition when reading getComputedStyle during exit.
   const previousTransform = node.style.transform;
+  const previousTransition = node.style.transition;
+  node.style.transition = '';
   node.style.transform = '';
   const rect = node.getBoundingClientRect();
   const computedStyle = containerWindow.getComputedStyle(node);
   const transform = computedStyle.getPropertyValue('transform');
   node.style.transform = previousTransform;
+  node.style.transition = previousTransition;
 
   let offsetX = 0;
   let offsetY = 0;
@@ -233,13 +240,21 @@ const Slide = React.forwardRef(function Slide(props, ref) {
     >
       {/* Ensure "ownerState" is not forwarded to the child DOM element when a direct HTML element is used. This avoids unexpected behavior since "ownerState" is intended for internal styling, component props and not as a DOM attribute. */}
       {(state, { ownerState, ...restChildProps }) => {
+        let childStyle;
+        if (state === 'exited' && !inProp) {
+          childStyle =
+            style || children.props.style
+              ? { visibility: 'hidden', ...style, ...children.props.style }
+              : hiddenStyles;
+        } else if (style && children.props.style) {
+          childStyle = { ...style, ...children.props.style };
+        } else {
+          childStyle = style || children.props.style;
+        }
+
         return React.cloneElement(children, {
           ref: handleRef,
-          style: {
-            visibility: state === 'exited' && !inProp ? 'hidden' : undefined,
-            ...style,
-            ...children.props.style,
-          },
+          style: childStyle,
           ...restChildProps,
         });
       }}

@@ -35,6 +35,25 @@ export function normalizedTransitionCallback(
   };
 }
 
+type TransitionState = 'entering' | 'entered' | 'exiting' | 'exited';
+
+/**
+ * Computes the child style for a transition component, reusing existing
+ * references when possible to preserve referential equality for React.memo.
+ */
+export function getTransitionChildStyle(
+  state: TransitionState,
+  inProp: boolean | undefined,
+  baseStyles: Record<string, React.CSSProperties>,
+  hiddenStyles: React.CSSProperties,
+  styleProp: React.CSSProperties | undefined,
+  childStyle: React.CSSProperties | undefined,
+): React.CSSProperties | undefined {
+  const base =
+    state === 'exited' && !inProp ? hiddenStyles : baseStyles[state] || baseStyles.exited;
+  return styleProp || childStyle ? { ...base, ...styleProp, ...childStyle } : base;
+}
+
 export function getTransitionProps(props: ComponentProps, options: Options): TransitionProps {
   const { timeout, easing, style = {} } = props;
 

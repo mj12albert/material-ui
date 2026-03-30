@@ -586,11 +586,17 @@ describe('<Slide />', () => {
         expect(child.style.transform).not.to.equal(undefined);
       });
 
-      // getComputedStyle in a real browser resolves inline transforms to matrix() format,
+      // getComputedStyle in a real browser resolves CSS transforms to matrix() format,
       // which the component parses to account for existing offsets. jsdom does not resolve
       // CSS values, so this test only runs in browser environments.
+      // The transform must come from a CSS rule (not inline style) because getTranslateValue
+      // clears inline transforms before reading computed style.
       it.skipIf(isJsdom())('should take existing transform into account', function test() {
+        const styleEl = document.createElement('style');
+        styleEl.textContent = '#slide-test-transform { transform: matrix(1, 0, 0, 1, 0, 420); }';
+        document.head.appendChild(styleEl);
         const element = document.createElement('div');
+        element.id = 'slide-test-transform';
         document.body.appendChild(element);
         stub(element, 'getBoundingClientRect').callsFake(() => ({
           width: 500,
@@ -600,13 +606,11 @@ describe('<Slide />', () => {
           top: 1200,
           bottom: 1500,
         }));
-        element.style.transform = 'matrix(1, 0, 0, 1, 0, 420)';
-        try {
-          setTranslateValue('up', element);
-          expect(element.style.transform).to.equal(`translateY(${globalThis.innerHeight - 780}px)`);
-        } finally {
-          document.body.removeChild(element);
-        }
+        setTranslateValue('up', element);
+        expect(element.style.transform).to.equal(`translateY(${globalThis.innerHeight - 780}px)`);
+
+        document.body.removeChild(element);
+        document.head.removeChild(styleEl);
       });
 
       it('should do nothing when visible', () => {

@@ -6,7 +6,12 @@ import elementAcceptingRef from '@mui/utils/elementAcceptingRef';
 import getReactElementRef from '@mui/utils/getReactElementRef';
 import { Transition } from 'react-transition-group';
 import { useTheme } from '../zero-styled';
-import { normalizedTransitionCallback, getTransitionProps, reflow } from '../transitions/utils';
+import {
+  normalizedTransitionCallback,
+  getTransitionProps,
+  getTransitionChildStyle,
+  reflow,
+} from '../transitions/utils';
 import useForkRef from '../utils/useForkRef';
 
 function getScale(value) {
@@ -14,15 +19,13 @@ function getScale(value) {
 }
 
 const styles = {
-  entering: {
-    opacity: 1,
-    transform: getScale(1),
-  },
-  entered: {
-    opacity: 1,
-    transform: 'none',
-  },
+  entering: { opacity: 1, transform: getScale(1) },
+  entered: { opacity: 1, transform: 'none' },
+  exiting: { opacity: 0, transform: getScale(0.75) },
+  exited: { opacity: 0, transform: getScale(0.75) },
 };
+
+const hiddenStyles = { opacity: 0, transform: getScale(0.75), visibility: 'hidden' };
 
 /**
  * The Grow transition is used by the [Tooltip](/material-ui/react-tooltip/) and
@@ -169,15 +172,17 @@ const Grow = React.forwardRef(function Grow(props, ref) {
     >
       {/* Ensure "ownerState" is not forwarded to the child DOM element when a direct HTML element is used. This avoids unexpected behavior since "ownerState" is intended for internal styling, component props and not as a DOM attribute. */}
       {(state, { ownerState, ...restChildProps }) => {
+        const childStyle = getTransitionChildStyle(
+          state,
+          inProp,
+          styles,
+          hiddenStyles,
+          style,
+          children.props.style,
+        );
+
         return React.cloneElement(children, {
-          style: {
-            opacity: 0,
-            transform: getScale(0.75),
-            visibility: state === 'exited' && !inProp ? 'hidden' : undefined,
-            ...styles[state],
-            ...style,
-            ...children.props.style,
-          },
+          style: childStyle,
           ref: handleRef,
           ...restChildProps,
         });

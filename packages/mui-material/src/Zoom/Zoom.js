@@ -5,17 +5,22 @@ import { Transition } from 'react-transition-group';
 import elementAcceptingRef from '@mui/utils/elementAcceptingRef';
 import getReactElementRef from '@mui/utils/getReactElementRef';
 import { useTheme } from '../zero-styled';
-import { normalizedTransitionCallback, reflow, getTransitionProps } from '../transitions/utils';
+import {
+  normalizedTransitionCallback,
+  reflow,
+  getTransitionProps,
+  getTransitionChildStyle,
+} from '../transitions/utils';
 import useForkRef from '../utils/useForkRef';
 
 const styles = {
-  entering: {
-    transform: 'none',
-  },
-  entered: {
-    transform: 'none',
-  },
+  entering: { transform: 'none' },
+  entered: { transform: 'none' },
+  exiting: { transform: 'scale(0)' },
+  exited: { transform: 'scale(0)' },
 };
+
+const hiddenStyles = { transform: 'scale(0)', visibility: 'hidden' };
 
 /**
  * The Zoom transition can be used for the floating variant of the
@@ -115,14 +120,17 @@ const Zoom = React.forwardRef(function Zoom(props, ref) {
     >
       {/* Ensure "ownerState" is not forwarded to the child DOM element when a direct HTML element is used. This avoids unexpected behavior since "ownerState" is intended for internal styling, component props and not as a DOM attribute. */}
       {(state, { ownerState, ...restChildProps }) => {
+        const childStyle = getTransitionChildStyle(
+          state,
+          inProp,
+          styles,
+          hiddenStyles,
+          style,
+          children.props.style,
+        );
+
         return React.cloneElement(children, {
-          style: {
-            transform: 'scale(0)',
-            visibility: state === 'exited' && !inProp ? 'hidden' : undefined,
-            ...styles[state],
-            ...style,
-            ...children.props.style,
-          },
+          style: childStyle,
           ref: handleRef,
           ...restChildProps,
         });

@@ -5,17 +5,22 @@ import { Transition } from 'react-transition-group';
 import elementAcceptingRef from '@mui/utils/elementAcceptingRef';
 import getReactElementRef from '@mui/utils/getReactElementRef';
 import { useTheme } from '../zero-styled';
-import { normalizedTransitionCallback, reflow, getTransitionProps } from '../transitions/utils';
+import {
+  normalizedTransitionCallback,
+  reflow,
+  getTransitionProps,
+  getTransitionChildStyle,
+} from '../transitions/utils';
 import useForkRef from '../utils/useForkRef';
 
 const styles = {
-  entering: {
-    opacity: 1,
-  },
-  entered: {
-    opacity: 1,
-  },
+  entering: { opacity: 1 },
+  entered: { opacity: 1 },
+  exiting: { opacity: 0 },
+  exited: { opacity: 0 },
 };
+
+const hiddenStyles = { opacity: 0, visibility: 'hidden' };
 
 /**
  * The Fade transition is used by the [Modal](/material-ui/react-modal/) component.
@@ -114,14 +119,17 @@ const Fade = React.forwardRef(function Fade(props, ref) {
     >
       {/* Ensure "ownerState" is not forwarded to the child DOM element when a direct HTML element is used. This avoids unexpected behavior since "ownerState" is intended for internal styling, component props and not as a DOM attribute. */}
       {(state, { ownerState, ...restChildProps }) => {
+        const childStyle = getTransitionChildStyle(
+          state,
+          inProp,
+          styles,
+          hiddenStyles,
+          style,
+          children.props.style,
+        );
+
         return React.cloneElement(children, {
-          style: {
-            opacity: 0,
-            visibility: state === 'exited' && !inProp ? 'hidden' : undefined,
-            ...styles[state],
-            ...style,
-            ...children.props.style,
-          },
+          style: childStyle,
           ref: handleRef,
           ...restChildProps,
         });

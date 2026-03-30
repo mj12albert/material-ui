@@ -111,7 +111,7 @@ function OffsetDemo() {
         slotProps={{
           popper: {
             middleware: [offset(offsetVal), flip(), shift()],
-          } as any,
+          },
         }}
       >
         <Button variant="outlined">Hover me</Button>
@@ -158,7 +158,7 @@ function AutoPlacementDemo() {
               popper: {
                 middleware,
                 disablePortal: true,
-              } as any,
+              },
             }}
           >
             <Button variant="outlined">Hover after scrolling</Button>
@@ -192,7 +192,7 @@ function StrategyDemo() {
         arrow
         slots={{ popper: FloatingPopup }}
         slotProps={{
-          popper: { strategy } as any,
+          popper: { strategy },
         }}
       >
         <Button variant="outlined">Hover me</Button>

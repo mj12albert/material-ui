@@ -758,7 +758,7 @@ const Tooltip = React.forwardRef(function Tooltip(inProps, ref) {
         role="tooltip"
         popperOptions={popperOptions}
         arrowRef={arrowRef}
-        arrowPadding={4}
+        arrowPadding={popperSlotProps.arrowPadding ?? 4}
       >
         {({ TransitionProps: TransitionPropsInner }) => (
           <TransitionSlot

@@ -1,16 +1,10 @@
 import * as React from 'react';
 import { expect } from 'chai';
 import { spy } from 'sinon';
-import {
-  createRenderer,
-  fireEvent,
-  flushMicrotasks,
-  screen,
-} from '@mui/internal-test-utils';
+import { createRenderer, fireEvent, flushMicrotasks, screen } from '@mui/internal-test-utils';
 import TextField from '@mui/material/TextField';
 import Autocomplete, { autocompleteClasses as classes } from '@mui/material/Autocomplete';
 import FloatingPopup from '@mui/material/FloatingPopup';
-import type { UserEvent } from '@testing-library/user-event';
 
 const options = ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon'];
 
@@ -28,7 +22,9 @@ function checkHighlightIs(listbox: HTMLElement, expected: string | null) {
  * FloatingPopup's async computePosition completes and visibility:hidden
  * is removed (making the popup accessible to getByRole).
  */
-async function openAutocomplete(user: UserEvent) {
+async function openAutocomplete(
+  user: ReturnType<ReturnType<typeof createRenderer>['render']>['user'],
+) {
   const input = screen.getByRole('combobox');
   await user.click(input);
   await flushMicrotasks();
@@ -176,7 +172,7 @@ describe('<Autocomplete slots={{ popper: FloatingPopup }} />', () => {
       const input = await openAutocomplete(user);
       await user.keyboard('{ArrowDown}');
       const firstOption = screen.getAllByRole('option')[0];
-      expect(input).to.have.attribute('aria-activedescendant', firstOption.getAttribute('id'));
+      expect(input).to.have.attribute('aria-activedescendant', firstOption.id);
     });
 
     it('should clear input on blur when no option is selected', async () => {
@@ -365,7 +361,7 @@ describe('<Autocomplete slots={{ popper: FloatingPopup }} />', () => {
       const { user } = renderAutocomplete();
       const input = await openAutocomplete(user);
       const listbox = screen.getByRole('listbox');
-      expect(input).to.have.attribute('aria-controls', listbox.getAttribute('id'));
+      expect(input).to.have.attribute('aria-controls', listbox.id);
     });
 
     it('should have role="presentation" on the popup container', async () => {
@@ -559,7 +555,7 @@ describe('<Autocomplete slots={{ popper: FloatingPopup }} />', () => {
   describe('slotProps.popper', () => {
     it('should forward keepMounted to FloatingPopup', () => {
       renderAutocomplete({
-        slotProps: { popper: { keepMounted: true } as any },
+        slotProps: { popper: { keepMounted: true } },
       });
       // Closed — floating element in DOM but with visibility:hidden (FOUC guard)
       const floating = document.querySelector('[data-popper-placement]');
@@ -568,7 +564,7 @@ describe('<Autocomplete slots={{ popper: FloatingPopup }} />', () => {
 
     it('should forward data attributes to the floating element', async () => {
       const { user } = renderAutocomplete({
-        slotProps: { popper: { 'data-testid': 'custom-popup' } as any },
+        slotProps: { popper: { 'data-testid': 'custom-popup' } },
       });
       await openAutocomplete(user);
       expect(screen.getByTestId('custom-popup')).not.to.equal(null);

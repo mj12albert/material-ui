@@ -182,7 +182,7 @@ function KeepMountedDemo() {
         sx={{ width: 300 }}
         slots={{ popper: FloatingPopup }}
         slotProps={{
-          popper: { keepMounted: true } as any,
+          popper: { keepMounted: true },
         }}
         renderInput={(params) => <TextField {...params} label="Movie" />}
       />

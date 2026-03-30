@@ -415,7 +415,7 @@ describe('<Tooltip slots={{ popper: FloatingPopup }} />', () => {
           title="Persistent"
           open={false}
           slots={{ popper: FloatingPopup }}
-          slotProps={{ popper: { keepMounted: true } as any }}
+          slotProps={{ popper: { keepMounted: true } }}
         >
           <button>Trigger</button>
         </Tooltip>,
@@ -429,7 +429,7 @@ describe('<Tooltip slots={{ popper: FloatingPopup }} />', () => {
           title="Hidden persistent"
           open={false}
           slots={{ popper: FloatingPopup }}
-          slotProps={{ popper: { keepMounted: true } as any }}
+          slotProps={{ popper: { keepMounted: true } }}
         >
           <button>Trigger</button>
         </Tooltip>,
@@ -450,7 +450,7 @@ describe('<Tooltip slots={{ popper: FloatingPopup }} />', () => {
           title="Data attr"
           open
           slots={{ popper: FloatingPopup }}
-          slotProps={{ popper: { 'data-testid': 'my-popper' } as any }}
+          slotProps={{ popper: { 'data-testid': 'my-popper' } as Record<string, unknown> }}
         >
           <button>Trigger</button>
         </Tooltip>,
@@ -464,7 +464,7 @@ describe('<Tooltip slots={{ popper: FloatingPopup }} />', () => {
           title="Fixed strategy"
           open
           slots={{ popper: FloatingPopup }}
-          slotProps={{ popper: { strategy: 'fixed' } as any }}
+          slotProps={{ popper: { strategy: 'fixed' } }}
         >
           <button>Trigger</button>
         </Tooltip>,
@@ -583,7 +583,7 @@ describe('<Tooltip slots={{ popper: FloatingPopup }} />', () => {
           title="Inline"
           open
           slots={{ popper: FloatingPopup }}
-          slotProps={{ popper: { disablePortal: true } as any }}
+          slotProps={{ popper: { disablePortal: true } }}
         >
           <button>Trigger</button>
         </Tooltip>,
@@ -644,7 +644,7 @@ describe('<Tooltip slots={{ popper: FloatingPopup }} />', () => {
           title="With middleware"
           open
           slots={{ popper: FloatingPopup }}
-          slotProps={{ popper: { middleware: [offset(20)] } as any }}
+          slotProps={{ popper: { middleware: [offset(20)] } }}
         >
           <button>Trigger</button>
         </Tooltip>,
@@ -665,7 +665,7 @@ describe('<Tooltip slots={{ popper: FloatingPopup }} />', () => {
           open
           arrow
           slots={{ popper: FloatingPopup }}
-          slotProps={{ popper: { middleware: [offset(12)] } as any }}
+          slotProps={{ popper: { middleware: [offset(12)] } }}
         >
           <button>Trigger</button>
         </Tooltip>,

@@ -702,7 +702,7 @@ const Tooltip = React.forwardRef(function Tooltip(inProps, ref) {
   };
 
   const [PopperSlot, popperSlotProps] = useSlot('popper', {
-    elementType: TooltipPopper,
+    elementType: Popper,
     externalForwardedProps,
     ownerState,
     className: classes.popper,
@@ -732,8 +732,8 @@ const Tooltip = React.forwardRef(function Tooltip(inProps, ref) {
   return (
     <React.Fragment>
       {React.cloneElement(children, childrenProps)}
-      <PopperSlot
-        as={Popper}
+      <TooltipPopper
+        as={PopperSlot}
         placement={placement}
         anchorEl={
           followCursor
@@ -755,7 +755,10 @@ const Tooltip = React.forwardRef(function Tooltip(inProps, ref) {
         transition
         {...interactiveWrapperListeners}
         {...popperSlotProps}
+        role="tooltip"
         popperOptions={popperOptions}
+        arrowRef={arrowRef}
+        arrowPadding={4}
       >
         {({ TransitionProps: TransitionPropsInner }) => (
           <TransitionSlot
@@ -769,7 +772,7 @@ const Tooltip = React.forwardRef(function Tooltip(inProps, ref) {
             </TooltipSlot>
           </TransitionSlot>
         )}
-      </PopperSlot>
+      </TooltipPopper>
     </React.Fragment>
   );
 });

@@ -848,7 +848,7 @@ const Tabs = React.forwardRef(function Tabs(inProps, ref) {
           role="tablist"
           {...listSlotProps}
         >
-          <TabsContext.Provider value>
+          <TabsContext.Provider value={true}>
             <RovingTabIndexProvider value={rovingTabIndex}>{children}</RovingTabIndexProvider>
           </TabsContext.Provider>
         </ListSlot>

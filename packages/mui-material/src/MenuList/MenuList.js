@@ -15,7 +15,7 @@ import {
   useRovingTabIndexRoot,
 } from '../utils/useRovingTabIndex';
 import ownerWindow from '../utils/ownerWindow';
-import { useSelectFocusSource } from '../Select/utils/SelectFocusSourceContext';
+import { useSelectFocusSource } from '../Select/utils';
 import MenuListContext from './MenuListContext';
 
 function getItemText(itemOrElement) {

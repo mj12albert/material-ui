@@ -2,7 +2,7 @@ import * as React from 'react';
 import { expect } from 'chai';
 import { act, createRenderer, fireEvent, screen } from '@mui/internal-test-utils';
 import {
-  type UseRovingTabIndexOptions,
+  type UseRovingTabIndexRootParams,
   useRovingTabIndexRoot,
   useRovingTabIndexItem,
   RovingTabIndexProvider,
@@ -53,36 +53,8 @@ function TestButton(props: TestItem & { buttonRef?: React.Ref<HTMLButtonElement>
   );
 }
 
-function RootParamItem(
-  props: TestItem & {
-    root: ReturnType<typeof useRovingTabIndexRoot<string>>;
-  },
-) {
-  const { root, ...item } = props;
-  const rovingItemProps = useRovingTabIndexItem(
-    {
-      id: item.id,
-      disabled: item.disabled,
-      focusableWhenDisabled: item.focusableWhenDisabled,
-      selected: item.selected,
-    },
-    root,
-  );
-
-  return (
-    <button
-      {...rovingItemProps}
-      aria-disabled={item.disabled ? 'true' : undefined}
-      data-testid={item.id}
-      role="tab"
-    >
-      {item.id}
-    </button>
-  );
-}
-
 function TestComponent(
-  props: Partial<UseRovingTabIndexOptions<string>> & {
+  props: Partial<UseRovingTabIndexRootParams<string>> & {
     items?: TestItem[];
     buttonRef?: React.Ref<HTMLButtonElement>;
   },
@@ -493,119 +465,5 @@ describe('useRovingTabIndexRoot + useRovingTabIndexItem', () => {
 
     await user.keyboard('{ArrowRight}');
     expect(screen.getByTestId('button-3')).toHaveFocus();
-  });
-});
-
-type RootParamTestItem = {
-  id: string;
-  disabled?: boolean;
-  render?: boolean;
-};
-
-function TestComponentWithExplicitRoot(
-  props: Partial<UseRovingTabIndexOptions<string>> & {
-    items?: RootParamTestItem[];
-  },
-) {
-  const { items = [{ id: 'item-1' }, { id: 'item-2' }, { id: 'item-3' }], ...options } = props;
-  const root = useRovingTabIndexRoot({
-    orientation: 'horizontal',
-    ...options,
-  });
-
-  return (
-    <div data-testid="root-param-container" tabIndex={-1} {...root.getContainerProps()}>
-      {items
-        .filter((item) => item.render !== false)
-        .map((item) => (
-          <RootParamItem key={item.id} root={root} {...item} />
-        ))}
-    </div>
-  );
-}
-
-describe('useRovingTabIndexItem(rootParam)', () => {
-  const { render } = createRenderer();
-
-  test('sets the first enabled item as the default tab stop', () => {
-    render(<TestComponentWithExplicitRoot />);
-
-    expect(screen.getByTestId('item-1')).to.have.attribute('tabindex', '0');
-    expect(screen.getByTestId('item-2')).to.have.attribute('tabindex', '-1');
-    expect(screen.getByTestId('item-3')).to.have.attribute('tabindex', '-1');
-  });
-
-  test('supports keyboard navigation', async () => {
-    const { user } = render(<TestComponentWithExplicitRoot />);
-
-    await user.click(screen.getByTestId('item-1'));
-    await user.keyboard('{ArrowRight}');
-    expect(screen.getByTestId('item-2')).toHaveFocus();
-
-    await user.keyboard('{ArrowRight}');
-    expect(screen.getByTestId('item-3')).toHaveFocus();
-
-    await user.keyboard('{ArrowLeft}');
-    expect(screen.getByTestId('item-2')).toHaveFocus();
-  });
-
-  test('handles dynamic item insertion', async () => {
-    const { setProps, user } = render(
-      <TestComponentWithExplicitRoot items={[{ id: 'item-1' }, { id: 'item-2' }]} />,
-    );
-
-    await user.click(screen.getByTestId('item-2'));
-
-    setProps({
-      items: [{ id: 'item-0' }, { id: 'item-1' }, { id: 'item-2' }],
-    });
-
-    expect(screen.getByTestId('item-2')).toHaveFocus();
-
-    await user.keyboard('{ArrowLeft}');
-    expect(screen.getByTestId('item-1')).toHaveFocus();
-  });
-
-  test('handles dynamic item removal', async () => {
-    const { setProps, user } = render(
-      <TestComponentWithExplicitRoot
-        items={[{ id: 'item-1' }, { id: 'item-2' }, { id: 'item-3' }]}
-      />,
-    );
-
-    await user.click(screen.getByTestId('item-2'));
-
-    setProps({
-      items: [{ id: 'item-1' }, { id: 'item-3' }],
-    });
-
-    act(() => {
-      screen.getByTestId('root-param-container').focus();
-    });
-
-    await user.keyboard('{ArrowRight}');
-    expect(screen.getByTestId('item-1')).toHaveFocus();
-
-    await user.keyboard('{ArrowRight}');
-    expect(screen.getByTestId('item-3')).toHaveFocus();
-  });
-
-  test('re-resolves when item metadata changes', async () => {
-    const { setProps, user } = render(
-      <TestComponentWithExplicitRoot
-        items={[{ id: 'item-1' }, { id: 'item-2' }, { id: 'item-3' }]}
-      />,
-    );
-
-    setProps({
-      items: [{ id: 'item-1', disabled: true }, { id: 'item-2' }, { id: 'item-3' }],
-    });
-
-    act(() => {
-      screen.getByTestId('root-param-container').focus();
-    });
-
-    await user.keyboard('{ArrowRight}');
-    expect(screen.getByTestId('item-2')).toHaveFocus();
   });
 });

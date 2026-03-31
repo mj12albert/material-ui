@@ -18,7 +18,7 @@ import { dividerClasses } from '../Divider';
 import { listItemIconClasses } from '../ListItemIcon';
 import { listItemTextClasses } from '../ListItemText';
 import MenuListContext from '../MenuList/MenuListContext';
-import { useSelectFocusSource } from '../Select/utils/SelectFocusSourceContext';
+import { useSelectFocusSource } from '../Select/utils';
 import menuItemClasses, { getMenuItemUtilityClass } from './menuItemClasses';
 
 export const overridesResolver = (props, styles) => {

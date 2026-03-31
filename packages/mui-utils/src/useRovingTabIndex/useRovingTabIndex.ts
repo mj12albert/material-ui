@@ -27,7 +27,7 @@ export interface RegisteredRovingTabIndexItem<Key = unknown> {
   selected: boolean;
 }
 
-export interface UseRovingTabIndexOptions<Key = unknown> {
+export interface UseRovingTabIndexRootParams<Key = unknown> {
   activeItemId?: Key | null | undefined;
   getDefaultActiveItemId?: ((items: RegisteredRovingTabIndexItem<Key>[]) => Key | null) | undefined;
   orientation: 'horizontal' | 'vertical';
@@ -36,7 +36,7 @@ export interface UseRovingTabIndexOptions<Key = unknown> {
   shouldWrap?: boolean | undefined;
 }
 
-export interface UseRovingTabIndexRootReturn<Key = unknown> {
+export interface UseRovingTabIndexRootReturnValue<Key = unknown> {
   activeItemId: Key | null;
   focusActiveItem: () => Key | null;
   focusNext: (
@@ -55,7 +55,9 @@ export interface UseRovingTabIndexRootReturn<Key = unknown> {
   unregisterItem: (itemId: Key) => void;
 }
 
-export interface UseRovingTabIndexItemReturn {
+export interface UseRovingTabIndexItemParams<Key = unknown> extends RovingTabIndexItem<Key> {}
+
+export interface UseRovingTabIndexItemReturnValue {
   onFocus: (event: React.FocusEvent<HTMLElement>) => void;
   ref: React.RefCallback<HTMLElement | null>;
   tabIndex: number;
@@ -63,11 +65,11 @@ export interface UseRovingTabIndexItemReturn {
 
 const SUPPORTED_KEYS = ['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
 
-type RovingTabIndexContextValue = UseRovingTabIndexRootReturn<unknown>;
+type RovingTabIndexContextValue = UseRovingTabIndexRootReturnValue<unknown>;
 
 export interface RovingTabIndexProviderProps<Key = unknown> {
   children?: React.ReactNode;
-  value: UseRovingTabIndexRootReturn<Key> | null;
+  value: UseRovingTabIndexRootReturnValue<Key> | null;
 }
 
 export const RovingTabIndexContext = React.createContext<RovingTabIndexContextValue | null>(null);
@@ -95,7 +97,7 @@ export function RovingTabIndexProvider<Key = unknown>(props: RovingTabIndexProvi
  * The hook manages the focus state of child elements and provides props to be spread on both the container and the items.
  * The container will handle keyboard events to move focus between items based on the specified orientation and wrapping behavior.
  *
- * @param options Configuration for the roving set.
+ * @param params Configuration for the roving set.
  * `activeItemId` synchronizes the active item when its value changes.
  * `getDefaultActiveItemId` picks the fallback active item when there is no requested item.
  * `isItemFocusable` filters registered items out of keyboard navigation without removing them from the map.
@@ -112,8 +114,8 @@ export function RovingTabIndexProvider<Key = unknown>(props: RovingTabIndexProvi
  * - `unregisterItem`: removes an item from the roving set.
  */
 export function useRovingTabIndexRoot<Key = unknown>(
-  options: UseRovingTabIndexOptions<Key>,
-): UseRovingTabIndexRootReturn<Key> {
+  params: UseRovingTabIndexRootParams<Key>,
+): UseRovingTabIndexRootReturnValue<Key> {
   const {
     activeItemId: activeItemIdProp,
     getDefaultActiveItemId,
@@ -121,7 +123,7 @@ export function useRovingTabIndexRoot<Key = unknown>(
     isRtl = false,
     isItemFocusable = isRovingTabIndexItemFocusable,
     shouldWrap = true,
-  } = options;
+  } = params;
 
   const [activeItemIdState, setActiveItemIdState] = React.useState<Key | null | undefined>(
     activeItemIdProp,
@@ -139,12 +141,13 @@ export function useRovingTabIndexRoot<Key = unknown>(
     }
   }
 
-  const itemMapRef = React.useRef<Map<Key, RegisteredRovingTabIndexItem<Key>>>(new Map());
   const navigableItemsRef = React.useRef<RegisteredRovingTabIndexItem<Key>[]>([]);
   const containerRef = React.useRef<HTMLElement | null>(null);
-  const [mapTick, setMapTick] = React.useState(0);
 
-  // `mapTick` is only an invalidation signal. The source of truth stays in the stable item map.
+  // based on https://github.com/mui/base-ui/blob/7392a928fca91fcc68b9fad3439ac61e10f3f7ba/packages/react/src/composite/list/CompositeList.tsx#L25-L35
+  const itemMapRef = React.useRef<Map<Key, RegisteredRovingTabIndexItem<Key>>>(new Map());
+  // `mapTick` is a trigger used to invalidate the memo, forcing a re-render when the map changes
+  const [mapTick, setMapTick] = React.useState(0);
   const orderedItems = React.useMemo(() => {
     void mapTick;
     return getOrderedItems(itemMapRef.current);
@@ -380,80 +383,69 @@ export function useRovingTabIndexRoot<Key = unknown>(
 }
 
 export function useRovingTabIndexItem<Key = unknown>(
-  item: RovingTabIndexItem<Key>,
-  rootParam?: UseRovingTabIndexRootReturn<Key> | null,
-): UseRovingTabIndexItemReturn {
+  params: UseRovingTabIndexItemParams<Key>,
+): UseRovingTabIndexItemReturnValue {
   const rootFromContext = React.useContext(RovingTabIndexContext);
   const itemRef = React.useRef<HTMLElement | null>(null);
   const normalizedItem = React.useMemo(
     () => ({
-      disabled: item.disabled ?? false,
+      disabled: params.disabled ?? false,
       element: null,
-      focusableWhenDisabled: item.focusableWhenDisabled ?? false,
-      id: item.id,
-      ref: item.ref,
-      selected: item.selected ?? false,
-      textValue: item.textValue,
+      focusableWhenDisabled: params.focusableWhenDisabled ?? false,
+      id: params.id,
+      ref: params.ref,
+      selected: params.selected ?? false,
+      textValue: params.textValue,
     }),
-    [item.disabled, item.focusableWhenDisabled, item.id, item.ref, item.selected, item.textValue],
+    [
+      params.disabled,
+      params.focusableWhenDisabled,
+      params.id,
+      params.ref,
+      params.selected,
+      params.textValue,
+    ],
   );
   const normalizedItemRef = React.useRef(normalizedItem);
   normalizedItemRef.current = normalizedItem;
   const registerItem = React.useCallback(
     (registeredItem: RegisteredRovingTabIndexItem<Key>) => {
-      if (rootParam != null) {
-        rootParam.registerItem(registeredItem);
-        return;
-      }
-
       rootFromContext?.registerItem(registeredItem);
     },
-    [rootFromContext, rootParam],
+    [rootFromContext],
   );
   const unregisterItem = React.useCallback(
     (itemId: Key) => {
-      if (rootParam != null) {
-        rootParam.unregisterItem(itemId);
-        return;
-      }
-
       rootFromContext?.unregisterItem(itemId);
     },
-    [rootFromContext, rootParam],
+    [rootFromContext],
   );
   const setActiveItemId = React.useCallback(
     (itemId: Key | null) => {
-      if (rootParam != null) {
-        rootParam.setActiveItemId(itemId);
-        return;
-      }
-
       rootFromContext?.setActiveItemId(itemId);
     },
-    [rootFromContext, rootParam],
+    [rootFromContext],
   );
   const isItemActive = React.useCallback(
     (itemId: Key) => {
-      if (rootParam != null) {
-        return rootParam.isItemActive(itemId);
-      }
-
       return rootFromContext?.isItemActive(itemId) ?? false;
     },
-    [rootFromContext, rootParam],
+    [rootFromContext],
   );
 
   const handleNodeChange = React.useCallback(
     (elementNode: HTMLElement | null) => {
       itemRef.current = elementNode;
 
-      if (elementNode === null) {
-        // Ref detachment runs during commit. Deferring the unregister avoids nested
-        // updates while still covering the case where the focusable element
-        // disappears but the hook owner stays mounted.
+      if (elementNode == null) {
+        // Ref detachment runs during React's commit phase. Calling `unregisterItem()`
+        // synchronously here can trigger a nested state update while React is still
+        // finishing that commit. Unregister in a microtask so it runs after the
+        // commit completes.
         queueMicrotask(() => {
-          if (itemRef.current === null) {
-            unregisterItem(item.id);
+          // null check prevents stale unregisters for a remove-then-re-add edge case
+          if (itemRef.current == null) {
+            unregisterItem(params.id);
           }
         });
         return;
@@ -464,13 +456,13 @@ export function useRovingTabIndexItem<Key = unknown>(
         element: elementNode,
       });
     },
-    [item.id, registerItem, unregisterItem],
+    [params.id, registerItem, unregisterItem],
   );
 
-  // `UseRovingTabIndexItemReturn.ref` is always a callback ref. `useForkRef()` only returns
+  // `UseRovingTabIndexItemReturnValue.ref` is always a callback ref. `useForkRef()` only returns
   // `null` when every input ref is `null`/`undefined`, but this call always includes
   // `handleNodeChange`, so the merged ref callback is guaranteed to exist.
-  const handleRef = useForkRef(item.ref, handleNodeChange)!;
+  const handleRef = useForkRef(params.ref, handleNodeChange)!;
 
   useEnhancedEffect(() => {
     if (!itemRef.current) {
@@ -491,24 +483,24 @@ export function useRovingTabIndexItem<Key = unknown>(
   ]);
 
   useEnhancedEffect(() => {
-    const itemId = item.id;
+    const itemId = params.id;
 
     return () => {
       unregisterItem(itemId);
     };
-  }, [item.id, unregisterItem]);
+  }, [params.id, unregisterItem]);
 
   const onFocus = React.useCallback(
     (_event: React.FocusEvent<HTMLElement>) => {
-      setActiveItemId(item.id);
+      setActiveItemId(params.id);
     },
-    [item.id, setActiveItemId],
+    [params.id, setActiveItemId],
   );
 
   return {
     onFocus,
     ref: handleRef,
-    tabIndex: isItemActive(item.id) ? 0 : -1,
+    tabIndex: isItemActive(params.id) ? 0 : -1,
   };
 }
 

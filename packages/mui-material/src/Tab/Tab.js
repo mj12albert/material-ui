@@ -221,6 +221,10 @@ const Tab = React.forwardRef(function Tab(inProps, ref) {
     selected,
   });
   const hasRovingTabIndex = tabsContext != null && rovingTabIndexContext != null;
+  // On the server, and on the first client render before registration effects run,
+  // the roving item map is still empty. In that window, fall back to `tabIndex={0}`
+  // for the selected tab so the rendered markup is immediately keyboard-accessible
+  // and hydration stays consistent until item registration takes over.
   const shouldUseSelectedTabIndexFallback =
     hasRovingTabIndex && rovingTabIndexContext.getItemMap().size === 0 && selected;
   const handleRef = useForkRef(ref, hasRovingTabIndex ? rovingTabIndexItemProps.ref : null);

@@ -159,8 +159,11 @@ const Menu = React.forwardRef(function Menu(inProps, ref) {
 
   return (
     <MenuRoot
-      // `autoFocus` here means Menu should move focus itself, usually into MenuList or its active item.
-      // Disable the underlying Popover/Modal autofocus path so it does not race with that logic.
+      // `disableAutoFocus={autoFocus}` is NOT a mistake
+      //   - `autoFocus` means `Menu` will control focus and move it into `MenuList` or an active `MenuItem`
+      //   - `disableAutoFocus` means disable `MenuRoot`s underlying `Popover`'s autoFocus handling
+      // This prevents `MenuList` and `Popover` from fighting each other to control focus.
+      // (This has nothing to do with DOM `autoFocus`)
       disableAutoFocus={autoFocus}
       onClose={onClose}
       anchorOrigin={{

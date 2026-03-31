@@ -10,7 +10,7 @@ import useEventCallback from '../utils/useEventCallback';
 import useForkRef from '../utils/useForkRef';
 import useEnhancedEffect from '../utils/useEnhancedEffect';
 import {
-  isRovingTabIndexItemFocusable,
+  isRovingTabIndexEntryFocusable,
   RovingTabIndexProvider,
   useRovingTabIndexRoot,
 } from '../utils/useRovingTabIndex';
@@ -62,7 +62,7 @@ function isItemFocusableWithTextCriteria(item, criteria) {
     return false;
   }
 
-  return isRovingTabIndexItemFocusable(item);
+  return isRovingTabIndexEntryFocusable(item);
 }
 
 // Menu auto-focus is not always keyboard-driven. On open we often move focus to the
@@ -122,13 +122,13 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
     (items) => {
       if (variant === 'selectedMenu') {
         return (
-          items.find((item) => item.selected && isRovingTabIndexItemFocusable(item))?.id ??
-          items.find((item) => isRovingTabIndexItemFocusable(item))?.id ??
+          items.find((item) => item.selected && isRovingTabIndexEntryFocusable(item))?.id ??
+          items.find((item) => isRovingTabIndexEntryFocusable(item))?.id ??
           null
         );
       }
 
-      return items.find((item) => isRovingTabIndexItemFocusable(item))?.id ?? null;
+      return items.find((item) => isRovingTabIndexEntryFocusable(item))?.id ?? null;
     },
     [variant],
   );

@@ -59,7 +59,6 @@ export interface UseRovingTabIndexRootReturnValue<Key = unknown> {
 export interface UseRovingTabIndexItemParams<Key = unknown> extends RovingTabIndexItem<Key> {}
 
 export interface UseRovingTabIndexItemReturnValue {
-  onFocus: (event: React.FocusEvent<HTMLElement>) => void;
   ref: React.RefCallback<HTMLElement | null>;
   tabIndex: number;
 }
@@ -116,7 +115,6 @@ export function useRovingTabIndexRoot<Key = unknown>(
     }
   }
 
-  const navigableItemsRef = React.useRef<RegisteredRovingTabIndexItem<Key>[]>([]);
   const containerRef = React.useRef<HTMLElement | null>(null);
 
   // based on https://github.com/mui/base-ui/blob/7392a928fca91fcc68b9fad3439ac61e10f3f7ba/packages/react/src/composite/list/CompositeList.tsx#L25-L35
@@ -128,11 +126,6 @@ export function useRovingTabIndexRoot<Key = unknown>(
     return getOrderedItems(itemMapRef.current);
   }, [mapTick]);
 
-  const navigableItems = React.useMemo(() => {
-    return orderedItems.filter(isConnectedItem);
-  }, [orderedItems]);
-  navigableItemsRef.current = navigableItems;
-
   const resolvedActiveItemId = resolveActiveItemId({
     activeItemId: activeItemIdCandidate,
     items: orderedItems,
@@ -142,13 +135,6 @@ export function useRovingTabIndexRoot<Key = unknown>(
 
   const activeItemIdRef = React.useRef<Key | null>(resolvedActiveItemId);
   activeItemIdRef.current = resolvedActiveItemId;
-
-  const getNavigableItemsSnapshot = React.useCallback(() => {
-    const liveNavigableItems = getOrderedItems(itemMapRef.current).filter(isConnectedItem);
-    navigableItemsRef.current = liveNavigableItems;
-
-    return liveNavigableItems;
-  }, []);
 
   const getActiveItem = React.useCallback(() => {
     const liveOrderedItems = getOrderedItems(itemMapRef.current);
@@ -198,7 +184,7 @@ export function useRovingTabIndexRoot<Key = unknown>(
       wrap: boolean,
       isItemFocusableOverride?: (item: RegisteredRovingTabIndexItem<Key>) => boolean,
     ) => {
-      const navigableItemsSnapshot = getNavigableItemsSnapshot();
+      const navigableItemsSnapshot = getNavigableItemsSnapshot(itemMapRef.current);
       const nextItem = getNextActiveItem(
         navigableItemsSnapshot,
         currentIndex,
@@ -216,7 +202,7 @@ export function useRovingTabIndexRoot<Key = unknown>(
 
       return nextItem;
     },
-    [getNavigableItemsSnapshot, isItemFocusable],
+    [isItemFocusable],
   );
 
   const focusActiveItem = React.useCallback(() => {
@@ -235,13 +221,11 @@ export function useRovingTabIndexRoot<Key = unknown>(
   const getContainerProps = React.useCallback(
     (ref?: React.Ref<HTMLElement>) => {
       const onFocus = (event: React.FocusEvent<HTMLElement>) => {
-        const focusedIndex = findItemIndexByElement(
-          getNavigableItemsSnapshot(),
-          event.target as HTMLElement,
-        );
+        const navigableItemsSnapshot = getNavigableItemsSnapshot(itemMapRef.current);
+        const focusedIndex = findItemIndexByElement(navigableItemsSnapshot, event.target);
 
         if (focusedIndex !== -1) {
-          setActiveItemIdState(navigableItemsRef.current[focusedIndex].id);
+          setActiveItemIdState(navigableItemsSnapshot[focusedIndex].id);
         }
       };
 
@@ -262,7 +246,7 @@ export function useRovingTabIndexRoot<Key = unknown>(
           nextItemKey = 'ArrowLeft';
         }
 
-        const navigableItemsSnapshot = getNavigableItemsSnapshot();
+        const navigableItemsSnapshot = getNavigableItemsSnapshot(itemMapRef.current);
         const currentFocus = getActiveElement(ownerDocument(containerRef.current));
         const isFocusOnContainer = currentFocus === containerRef.current;
         let currentIndex = getCurrentActiveItemIndex(
@@ -312,12 +296,12 @@ export function useRovingTabIndexRoot<Key = unknown>(
         }),
       };
     },
-    [focusItem, getNavigableItemsSnapshot, isRtl, orientation, shouldWrap],
+    [focusItem, isRtl, orientation, shouldWrap],
   );
 
   const focusNext = React.useCallback(
     (isItemFocusableOverride?: (item: RegisteredRovingTabIndexItem<Key>) => boolean) => {
-      const navigableItemsSnapshot = getNavigableItemsSnapshot();
+      const navigableItemsSnapshot = getNavigableItemsSnapshot(itemMapRef.current);
       const currentFocus = getActiveElement(ownerDocument(containerRef.current));
       const isFocusOnContainer = currentFocus === containerRef.current;
       const currentIndex = isFocusOnContainer
@@ -326,7 +310,7 @@ export function useRovingTabIndexRoot<Key = unknown>(
 
       return focusItem(currentIndex, 'next', true, isItemFocusableOverride)?.id ?? null;
     },
-    [focusItem, getNavigableItemsSnapshot],
+    [focusItem],
   );
 
   return React.useMemo(
@@ -361,6 +345,7 @@ export function useRovingTabIndexItem<Key = unknown>(
   params: UseRovingTabIndexItemParams<Key>,
 ): UseRovingTabIndexItemReturnValue {
   const rootFromContext = useRovingTabIndexContext();
+  const { activeItemId, registerItem, unregisterItem } = rootFromContext;
   const itemRef = React.useRef<HTMLElement | null>(null);
   const normalizedItem = React.useMemo(
     () => ({
@@ -368,45 +353,13 @@ export function useRovingTabIndexItem<Key = unknown>(
       element: null,
       focusableWhenDisabled: params.focusableWhenDisabled ?? false,
       id: params.id,
-      ref: params.ref,
       selected: params.selected ?? false,
       textValue: params.textValue,
     }),
-    [
-      params.disabled,
-      params.focusableWhenDisabled,
-      params.id,
-      params.ref,
-      params.selected,
-      params.textValue,
-    ],
+    [params.disabled, params.focusableWhenDisabled, params.id, params.selected, params.textValue],
   );
   const normalizedItemRef = React.useRef(normalizedItem);
   normalizedItemRef.current = normalizedItem;
-  const registerItem = React.useCallback(
-    (registeredItem: RegisteredRovingTabIndexItem<Key>) => {
-      rootFromContext?.registerItem(registeredItem);
-    },
-    [rootFromContext],
-  );
-  const unregisterItem = React.useCallback(
-    (itemId: Key) => {
-      rootFromContext?.unregisterItem(itemId);
-    },
-    [rootFromContext],
-  );
-  const setActiveItemId = React.useCallback(
-    (itemId: Key | null) => {
-      rootFromContext?.setActiveItemId(itemId);
-    },
-    [rootFromContext],
-  );
-  const isItemActive = React.useCallback(
-    (itemId: Key) => {
-      return rootFromContext?.isItemActive(itemId) ?? false;
-    },
-    [rootFromContext],
-  );
 
   const handleNodeChange = React.useCallback(
     (elementNode: HTMLElement | null) => {
@@ -465,17 +418,9 @@ export function useRovingTabIndexItem<Key = unknown>(
     };
   }, [params.id, unregisterItem]);
 
-  const onFocus = React.useCallback(
-    (_event: React.FocusEvent<HTMLElement>) => {
-      setActiveItemId(params.id);
-    },
-    [params.id, setActiveItemId],
-  );
-
   return {
-    onFocus,
     ref: handleRef,
-    tabIndex: isItemActive(params.id) ? 0 : -1,
+    tabIndex: activeItemId === params.id ? 0 : -1,
   };
 }
 
@@ -624,6 +569,10 @@ function getOrderedItems<Key>(itemMap: Map<Key, RegisteredRovingTabIndexItem<Key
   const disconnectedItems = items.filter((item) => !isConnectedItem(item));
 
   return [...connectedItems, ...disconnectedItems];
+}
+
+function getNavigableItemsSnapshot<Key>(itemMap: Map<Key, RegisteredRovingTabIndexItem<Key>>) {
+  return getOrderedItems(itemMap).filter(isConnectedItem);
 }
 
 function areItemsEquivalent<Key>(

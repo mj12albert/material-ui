@@ -130,6 +130,21 @@ describe('<Tab />', () => {
     });
   });
 
+  describe('prop: onFocus', () => {
+    it('should be called once when focus is triggered', async () => {
+      const handleFocus = spy();
+      const { user } = render(
+        <Tabs value={0}>
+          <Tab value={0} onFocus={handleFocus} />
+        </Tabs>,
+      );
+
+      await user.tab();
+
+      expect(handleFocus.callCount).to.equal(1);
+    });
+  });
+
   describe('prop: label', () => {
     it('should render label', () => {
       render(

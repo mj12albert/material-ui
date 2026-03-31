@@ -10,7 +10,6 @@ import memoTheme from '../utils/memoTheme';
 import { useDefaultProps } from '../DefaultPropsProvider';
 import unsupportedProp from '../utils/unsupportedProp';
 import { useRovingTabIndexContext, useRovingTabIndexItem } from '../utils/useRovingTabIndex';
-import useForkRef from '../utils/useForkRef';
 import tabClasses, { getTabUtilityClass } from './tabClasses';
 
 const useUtilityClasses = (ownerState) => {
@@ -215,6 +214,7 @@ const Tab = React.forwardRef(function Tab(inProps, ref) {
   const rovingTabIndexContext = useRovingTabIndexContext();
   const rovingTabIndexItemProps = useRovingTabIndexItem({
     id: value,
+    ref,
     disabled,
     selected,
   });
@@ -224,7 +224,6 @@ const Tab = React.forwardRef(function Tab(inProps, ref) {
   // and hydration stays consistent until item registration takes over.
   const shouldUseSelectedTabIndexFallback =
     rovingTabIndexContext.getItemMap().size === 0 && selected;
-  const handleRef = useForkRef(ref, rovingTabIndexItemProps.ref);
   const tabIndex = shouldUseSelectedTabIndexFallback ? 0 : rovingTabIndexItemProps.tabIndex;
 
   const ownerState = {
@@ -258,8 +257,6 @@ const Tab = React.forwardRef(function Tab(inProps, ref) {
   };
 
   const handleFocus = (event) => {
-    rovingTabIndexItemProps.onFocus(event);
-
     if (selectionFollowsFocus && !selected && onChange) {
       onChange(event, value);
     }
@@ -274,7 +271,7 @@ const Tab = React.forwardRef(function Tab(inProps, ref) {
       internalNativeButton
       focusRipple={!disableFocusRipple}
       className={clsx(classes.root, className)}
-      ref={handleRef}
+      ref={rovingTabIndexItemProps.ref}
       role="tab"
       aria-selected={selected}
       disabled={disabled}

@@ -242,7 +242,6 @@ const MenuItem = React.forwardRef(function MenuItem(inProps, ref) {
     <ListContext.Provider value={childContext}>
       <MenuItemRoot
         ref={handleRef}
-        onFocus={rovingTabIndexItemProps.onFocus}
         role={role}
         tabIndex={tabIndex}
         component={component}

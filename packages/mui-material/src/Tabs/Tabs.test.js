@@ -497,7 +497,6 @@ describe.skipIf(isSafari)('<Tabs />', () => {
           reactMajor >= 18 && 'You can provide one of the following values: 1, 3',
           'You can provide one of the following values: 1, 3',
           'You can provide one of the following values: 1, 3',
-          'You can provide one of the following values: 1, 3',
         ]);
       });
 

@@ -91,7 +91,16 @@ const Fade = React.forwardRef(function Fade(props, ref) {
     }
   });
 
-  const handleExited = normalizedTransitionCallback(nodeRef, onExited);
+  const handleExited = normalizedTransitionCallback(nodeRef, (node) => {
+    // Clear the transition CSS to release the compositor layer when the
+    // element is fully exited (prevents idle CPU usage on fixed elements
+    // like Backdrop). handleEnter re-sets it on the next open.
+    node.style.transition = '';
+
+    if (onExited) {
+      onExited(node);
+    }
+  });
 
   const handleAddEndListener = (next) => {
     if (addEndListener) {

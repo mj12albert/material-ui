@@ -141,7 +141,13 @@ const Grow = React.forwardRef(function Grow(props, ref) {
     }
   });
 
-  const handleExited = normalizedTransitionCallback(nodeRef, onExited);
+  const handleExited = normalizedTransitionCallback(nodeRef, (node) => {
+    node.style.transition = '';
+
+    if (onExited) {
+      onExited(node);
+    }
+  });
 
   const handleAddEndListener = (next) => {
     if (timeout === 'auto') {

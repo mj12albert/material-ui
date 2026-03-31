@@ -92,7 +92,13 @@ const Zoom = React.forwardRef(function Zoom(props, ref) {
     }
   });
 
-  const handleExited = normalizedTransitionCallback(nodeRef, onExited);
+  const handleExited = normalizedTransitionCallback(nodeRef, (node) => {
+    node.style.transition = '';
+
+    if (onExited) {
+      onExited(node);
+    }
+  });
 
   const handleAddEndListener = (next) => {
     if (addEndListener) {

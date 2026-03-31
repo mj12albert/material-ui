@@ -8,6 +8,7 @@ import setRef from '../setRef';
 import useEnhancedEffect from '../useEnhancedEffect';
 import useEventCallback from '../useEventCallback';
 import useForkRef from '../useForkRef';
+import { useRovingTabIndexContext } from './RovingTabIndexContext';
 
 export interface RovingTabIndexItem<Key = unknown> {
   id: Key;
@@ -64,32 +65,6 @@ export interface UseRovingTabIndexItemReturnValue {
 }
 
 const SUPPORTED_KEYS = ['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
-
-type RovingTabIndexContextValue = UseRovingTabIndexRootReturnValue<unknown>;
-
-export interface RovingTabIndexProviderProps<Key = unknown> {
-  children?: React.ReactNode;
-  value: UseRovingTabIndexRootReturnValue<Key> | null;
-}
-
-export const RovingTabIndexContext = React.createContext<RovingTabIndexContextValue | null>(null);
-
-if (process.env.NODE_ENV !== 'production') {
-  RovingTabIndexContext.displayName = 'RovingTabIndexContext';
-}
-
-export function RovingTabIndexProvider<Key = unknown>(props: RovingTabIndexProviderProps<Key>) {
-  const { children, value } = props;
-
-  return React.createElement(
-    RovingTabIndexContext.Provider,
-    {
-      // The provider boundary erases the item id type; item hooks restore their local Key when reading it.
-      value: value as RovingTabIndexContextValue | null,
-    },
-    children,
-  );
-}
 
 /**
  * Provides roving tab index behavior for a composite container and its focusable children.
@@ -385,7 +360,7 @@ export function useRovingTabIndexRoot<Key = unknown>(
 export function useRovingTabIndexItem<Key = unknown>(
   params: UseRovingTabIndexItemParams<Key>,
 ): UseRovingTabIndexItemReturnValue {
-  const rootFromContext = React.useContext(RovingTabIndexContext);
+  const rootFromContext = useRovingTabIndexContext();
   const itemRef = React.useRef<HTMLElement | null>(null);
   const normalizedItem = React.useMemo(
     () => ({

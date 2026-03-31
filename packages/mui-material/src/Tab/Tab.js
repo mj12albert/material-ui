@@ -9,8 +9,7 @@ import { styled } from '../zero-styled';
 import memoTheme from '../utils/memoTheme';
 import { useDefaultProps } from '../DefaultPropsProvider';
 import unsupportedProp from '../utils/unsupportedProp';
-import TabsContext from '../Tabs/TabsContext';
-import { RovingTabIndexContext, useRovingTabIndexItem } from '../utils/useRovingTabIndex';
+import { useRovingTabIndexContext, useRovingTabIndexItem } from '../utils/useRovingTabIndex';
 import useForkRef from '../utils/useForkRef';
 import tabClasses, { getTabUtilityClass } from './tabClasses';
 
@@ -213,26 +212,20 @@ const Tab = React.forwardRef(function Tab(inProps, ref) {
     wrapped = false,
     ...other
   } = props;
-  const tabsContext = React.useContext(TabsContext);
-  const rovingTabIndexContext = React.useContext(RovingTabIndexContext);
+  const rovingTabIndexContext = useRovingTabIndexContext();
   const rovingTabIndexItemProps = useRovingTabIndexItem({
     id: value,
     disabled,
     selected,
   });
-  const hasRovingTabIndex = tabsContext != null && rovingTabIndexContext != null;
   // On the server, and on the first client render before registration effects run,
   // the roving item map is still empty. In that window, fall back to `tabIndex={0}`
   // for the selected tab so the rendered markup is immediately keyboard-accessible
   // and hydration stays consistent until item registration takes over.
   const shouldUseSelectedTabIndexFallback =
-    hasRovingTabIndex && rovingTabIndexContext.getItemMap().size === 0 && selected;
-  const handleRef = useForkRef(ref, hasRovingTabIndex ? rovingTabIndexItemProps.ref : null);
-  let tabIndex;
-
-  if (hasRovingTabIndex) {
-    tabIndex = shouldUseSelectedTabIndexFallback ? 0 : rovingTabIndexItemProps.tabIndex;
-  }
+    rovingTabIndexContext.getItemMap().size === 0 && selected;
+  const handleRef = useForkRef(ref, rovingTabIndexItemProps.ref);
+  const tabIndex = shouldUseSelectedTabIndexFallback ? 0 : rovingTabIndexItemProps.tabIndex;
 
   const ownerState = {
     ...props,
@@ -265,9 +258,7 @@ const Tab = React.forwardRef(function Tab(inProps, ref) {
   };
 
   const handleFocus = (event) => {
-    if (hasRovingTabIndex) {
-      rovingTabIndexItemProps.onFocus(event);
-    }
+    rovingTabIndexItemProps.onFocus(event);
 
     if (selectionFollowsFocus && !selected && onChange) {
       onChange(event, value);

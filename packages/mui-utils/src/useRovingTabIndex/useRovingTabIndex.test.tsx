@@ -5,8 +5,8 @@ import {
   type UseRovingTabIndexRootParams,
   useRovingTabIndexRoot,
   useRovingTabIndexItem,
-  RovingTabIndexProvider,
 } from './useRovingTabIndex';
+import { RovingTabIndexProvider } from './RovingTabIndexContext';
 
 type TestItem = {
   id: string;

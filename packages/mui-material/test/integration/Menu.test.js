@@ -39,6 +39,7 @@ function ButtonMenu(props) {
         aria-haspopup="true"
         aria-controls="lock-menu"
         aria-label="open menu"
+        disableRipple
         onClick={handleClickListItem}
       >
         {`selectedIndex: ${selectedIndex}, open: ${open}`}
@@ -56,6 +57,7 @@ function ButtonMenu(props) {
         {options.map((option, index) => (
           <MenuItem
             key={option}
+            disableRipple
             selected={index === selectedIndex}
             onClick={(event) => handleMenuItemClick(event, index)}
           >
@@ -152,6 +154,70 @@ describe('<Menu /> integration', () => {
     });
 
     expect(screen.getAllByRole('menuitem')[2]).toHaveFocus();
+  });
+
+  it('closes the menu when a menu item is clicked', async () => {
+    render(<ButtonMenu />);
+
+    const button = screen.getByRole('button', { name: 'open menu' });
+    await act(async () => {
+      button.focus();
+      button.click();
+    });
+
+    const menuitem = screen.getByRole('menuitem', { name: options[0] });
+    await act(async () => {
+      menuitem.click();
+    });
+    clock.tick(0);
+
+    expect(screen.getByRole('menu', { hidden: true })).toBeInaccessible();
+    screen.getByText('selectedIndex: 0, open: false');
+  });
+
+  it('closes the menu when Enter activates a menu item', async () => {
+    render(<ButtonMenu />);
+
+    const button = screen.getByRole('button', { name: 'open menu' });
+    await act(async () => {
+      button.focus();
+      button.click();
+    });
+
+    const menuitem = screen.getByRole('menuitem', { name: options[0] });
+    expect(menuitem).toHaveFocus();
+
+    // eslint-disable-next-line testing-library/no-unnecessary-act -- ButtonBase's keyboard activation schedules ripple updates that must be flushed inside the same act.
+    act(() => {
+      fireEvent.keyDown(menuitem, { key: 'Enter' });
+      clock.tick(0);
+    });
+
+    expect(screen.getByRole('menu', { hidden: true })).toBeInaccessible();
+    screen.getByText('selectedIndex: 0, open: false');
+  });
+
+  it('closes the menu when Space activates a menu item', async () => {
+    render(<ButtonMenu />);
+
+    const button = screen.getByRole('button', { name: 'open menu' });
+    await act(async () => {
+      button.focus();
+      button.click();
+    });
+
+    const menuitem = screen.getByRole('menuitem', { name: options[0] });
+    expect(menuitem).toHaveFocus();
+
+    // eslint-disable-next-line testing-library/no-unnecessary-act -- ButtonBase's keyboard activation schedules ripple updates that must be flushed inside the same act.
+    act(() => {
+      fireEvent.keyDown(menuitem, { key: ' ' });
+      fireEvent.keyUp(menuitem, { key: ' ' });
+      clock.tick(0);
+    });
+
+    expect(screen.getByRole('menu', { hidden: true })).toBeInaccessible();
+    screen.getByText('selectedIndex: 0, open: false');
   });
 
   describe('Menu variant differences', () => {

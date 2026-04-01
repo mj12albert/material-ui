@@ -679,51 +679,24 @@ describe('<Select />', () => {
     });
 
     describe('when the first child is a ListSubheader wrapped in a custom component', () => {
-      describe('with the `muiSkipListHighlight` static field', () => {
-        function WrappedListSubheader(props) {
-          return <ListSubheader {...props} />;
-        }
+      function WrappedListSubheader(props) {
+        return <ListSubheader {...props} />;
+      }
 
-        WrappedListSubheader.muiSkipListHighlight = true;
+      it('highlights the first selectable option below the header without extra skip markers', () => {
+        render(
+          <Select defaultValue="" open>
+            <WrappedListSubheader>Category 1</WrappedListSubheader>
+            <MenuItem value={1}>Option 1</MenuItem>
+            <MenuItem value={2}>Option 2</MenuItem>
+            <WrappedListSubheader>Category 2</WrappedListSubheader>
+            <MenuItem value={3}>Option 3</MenuItem>
+            <MenuItem value={4}>Option 4</MenuItem>
+          </Select>,
+        );
 
-        it('highlights the first selectable option below the header', () => {
-          render(
-            <Select defaultValue="" open>
-              <WrappedListSubheader>Category 1</WrappedListSubheader>
-              <MenuItem value={1}>Option 1</MenuItem>
-              <MenuItem value={2}>Option 2</MenuItem>
-              <WrappedListSubheader>Category 2</WrappedListSubheader>
-              <MenuItem value={3}>Option 3</MenuItem>
-              <MenuItem value={4}>Option 4</MenuItem>
-            </Select>,
-          );
-
-          const expectedHighlightedOption = screen.getByText('Option 1');
-          expect(expectedHighlightedOption).to.have.attribute('tabindex', '0');
-        });
-      });
-
-      describe('with the `muiSkipListHighlight` prop', () => {
-        function WrappedListSubheader(props) {
-          const { muiSkipListHighlight, ...other } = props;
-          return <ListSubheader {...other} />;
-        }
-
-        it('highlights the first selectable option below the header', () => {
-          render(
-            <Select defaultValue="" open>
-              <WrappedListSubheader muiSkipListHighlight>Category 1</WrappedListSubheader>
-              <MenuItem value={1}>Option 1</MenuItem>
-              <MenuItem value={2}>Option 2</MenuItem>
-              <WrappedListSubheader muiSkipListHighlight>Category 2</WrappedListSubheader>
-              <MenuItem value={3}>Option 3</MenuItem>
-              <MenuItem value={4}>Option 4</MenuItem>
-            </Select>,
-          );
-
-          const expectedHighlightedOption = screen.getByText('Option 1');
-          expect(expectedHighlightedOption).to.have.attribute('tabindex', '0');
-        });
+        const expectedHighlightedOption = screen.getByText('Option 1');
+        expect(expectedHighlightedOption).to.have.attribute('tabindex', '0');
       });
     });
 

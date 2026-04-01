@@ -67,7 +67,7 @@ const RovingStepButton = React.forwardRef(function RovingStepButton(props, ref) 
   });
 
   return (
-    <StepButtonRoot {...rovingItemProps} {...other}>
+    <StepButtonRoot disabled={disabled} {...rovingItemProps} {...other}>
       {children}
     </StepButtonRoot>
   );

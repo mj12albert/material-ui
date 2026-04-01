@@ -211,8 +211,8 @@ const Tab = React.forwardRef(function Tab(inProps, ref) {
     wrapped = false,
     ...other
   } = props;
-  const rovingTabIndexContext = useRovingTabIndexContext();
-  const rovingTabIndexItemProps = useRovingTabIndexItem({
+  const rovingContext = useRovingTabIndexContext();
+  const rovingItemProps = useRovingTabIndexItem({
     id: value,
     ref,
     disabled,
@@ -222,9 +222,8 @@ const Tab = React.forwardRef(function Tab(inProps, ref) {
   // the roving item map is still empty. In that window, fall back to `tabIndex={0}`
   // for the selected tab so the rendered markup is immediately keyboard-accessible
   // and hydration stays consistent until item registration takes over.
-  const shouldUseSelectedTabIndexFallback =
-    rovingTabIndexContext.getItemMap().size === 0 && selected;
-  const tabIndex = shouldUseSelectedTabIndexFallback ? 0 : rovingTabIndexItemProps.tabIndex;
+  const shouldUseSelectedTabIndexFallback = rovingContext.getItemMap().size === 0 && selected;
+  const tabIndex = shouldUseSelectedTabIndexFallback ? 0 : rovingItemProps.tabIndex;
 
   const ownerState = {
     ...props,
@@ -271,7 +270,7 @@ const Tab = React.forwardRef(function Tab(inProps, ref) {
       internalNativeButton
       focusRipple={!disableFocusRipple}
       className={clsx(classes.root, className)}
-      ref={rovingTabIndexItemProps.ref}
+      ref={rovingItemProps.ref}
       role="tab"
       aria-selected={selected}
       disabled={disabled}

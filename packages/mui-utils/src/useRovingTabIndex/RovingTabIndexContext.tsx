@@ -2,13 +2,13 @@
 
 import * as React from 'react';
 
-import type { UseRovingTabIndexRootReturnValue } from './useRovingTabIndex';
+import type { UseRovingTabIndexReturnValue } from './useRovingTabIndex';
 
-type RovingTabIndexContextValue = UseRovingTabIndexRootReturnValue<unknown>;
+type RovingTabIndexContextValue = UseRovingTabIndexReturnValue<unknown>;
 
 export interface RovingTabIndexProviderProps<Key = unknown> {
   children?: React.ReactNode;
-  value: UseRovingTabIndexRootReturnValue<Key>;
+  value: UseRovingTabIndexReturnValue<Key>;
 }
 
 export const RovingTabIndexContext = React.createContext<RovingTabIndexContextValue | undefined>(

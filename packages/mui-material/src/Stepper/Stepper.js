@@ -69,21 +69,21 @@ function StepperWithRovingTabIndex(props) {
   const { children, className, component, forwardedRef, isRtl, orientation, ownerState, ...other } =
     props;
 
-  const rovingTabIndex = useRovingTabIndexRoot({
+  const rovingContainer = useRovingTabIndexRoot({
     orientation,
     isRtl,
   });
-  const rovingTabIndexContainerProps = rovingTabIndex.getContainerProps(forwardedRef);
+  const rovingContainerProps = rovingContainer.getContainerProps(forwardedRef);
 
   return (
-    <RovingTabIndexProvider value={rovingTabIndex}>
+    <RovingTabIndexProvider value={rovingContainer}>
       <StepperRoot
         as={component}
         ownerState={ownerState}
         className={className}
         role="tablist"
         aria-orientation={orientation}
-        {...rovingTabIndexContainerProps}
+        {...rovingContainerProps}
         {...other}
       >
         {children}

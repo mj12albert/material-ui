@@ -2,7 +2,7 @@ import * as React from 'react';
 import { expect } from 'chai';
 import { act, createRenderer, fireEvent, screen } from '@mui/internal-test-utils';
 import {
-  type UseRovingTabIndexRootParams,
+  type UseRovingTabIndexParams,
   useRovingTabIndexRoot,
   useRovingTabIndexItem,
 } from './useRovingTabIndex';
@@ -54,7 +54,7 @@ function TestButton(props: TestItem & { buttonRef?: React.Ref<HTMLButtonElement>
 }
 
 function TestComponent(
-  props: Partial<UseRovingTabIndexRootParams<string>> & {
+  props: Partial<UseRovingTabIndexParams<string>> & {
     items?: TestItem[];
     buttonRef?: React.Ref<HTMLButtonElement>;
   },
@@ -277,7 +277,16 @@ describe('useRovingTabIndexRoot + useRovingTabIndexItem', () => {
     expect(screen.getByTestId('button-1')).toHaveFocus();
   });
 
-  test('does not wrap when shouldWrap is false', async () => {
+  test('does not wrap when wrap is false', async () => {
+    const { user } = render(<TestComponent wrap={false} />);
+
+    await user.click(screen.getByTestId('button-4'));
+    await user.keyboard('{ArrowRight}');
+
+    expect(screen.getByTestId('button-4')).toHaveFocus();
+  });
+
+  test('supports shouldWrap as a compatibility alias', async () => {
     const { user } = render(<TestComponent shouldWrap={false} />);
 
     await user.click(screen.getByTestId('button-4'));

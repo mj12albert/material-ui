@@ -2,7 +2,6 @@
 export {
   RovingTabIndexContext,
   RovingTabIndexProvider,
-  isRovingTabIndexEntryFocusable,
   useRovingTabIndexContext,
   useRovingTabIndexItem,
   useRovingTabIndexRoot,

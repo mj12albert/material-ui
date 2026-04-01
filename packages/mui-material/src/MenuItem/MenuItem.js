@@ -17,7 +17,7 @@ import { useRovingTabIndexItem } from '../utils/useRovingTabIndex';
 import { dividerClasses } from '../Divider';
 import { listItemIconClasses } from '../ListItemIcon';
 import { listItemTextClasses } from '../ListItemText';
-import MenuListContext from '../MenuList/MenuListContext';
+import { useMenuListContext } from '../MenuList/MenuListContext';
 import { useSelectFocusSource } from '../Select/utils';
 import menuItemClasses, { getMenuItemUtilityClass } from './menuItemClasses';
 
@@ -190,9 +190,9 @@ const MenuItem = React.forwardRef(function MenuItem(inProps, ref) {
     }),
     [context.dense, dense, disableGutters],
   );
-  const menuListContext = React.useContext(MenuListContext);
+  const menuListContext = useMenuListContext();
   const rovingItemId = useId();
-  const disabledItemsFocusable = menuListContext?.disabledItemsFocusable ?? false;
+  const itemsFocusableWhenDisabled = menuListContext.itemsFocusableWhenDisabled;
 
   const menuItemRef = React.useRef(null);
   useEnhancedEffect(() => {
@@ -217,22 +217,22 @@ const MenuItem = React.forwardRef(function MenuItem(inProps, ref) {
 
   const classes = useUtilityClasses(props);
 
-  const rovingTabIndexItemProps = useRovingTabIndexItem({
+  const rovingItemProps = useRovingTabIndexItem({
     id: rovingItemId,
     ref,
     disabled: props.disabled,
-    focusableWhenDisabled: disabledItemsFocusable,
+    focusableWhenDisabled: itemsFocusableWhenDisabled,
     selected: props.selected,
   });
 
-  const handleRef = useForkRef(menuItemRef, rovingTabIndexItemProps.ref);
+  const handleRef = useForkRef(menuItemRef, rovingItemProps.ref);
 
   let tabIndex;
   if (tabIndexProp !== undefined) {
     tabIndex = tabIndexProp;
-  } else if (menuListContext?.variant === 'selectedMenu') {
-    tabIndex = rovingTabIndexItemProps.tabIndex;
-  } else if (!props.disabled || disabledItemsFocusable) {
+  } else if (menuListContext.variant === 'selectedMenu') {
+    tabIndex = rovingItemProps.tabIndex;
+  } else if (!props.disabled || itemsFocusableWhenDisabled) {
     // In `menu` variant, registration still drives arrow-key navigation even
     // though each item keeps `tabIndex={-1}`.
     tabIndex = -1;
@@ -246,7 +246,7 @@ const MenuItem = React.forwardRef(function MenuItem(inProps, ref) {
         tabIndex={tabIndex}
         component={component}
         internalNativeButton={false}
-        focusableWhenDisabled={disabledItemsFocusable}
+        focusableWhenDisabled={itemsFocusableWhenDisabled}
         focusVisibleClassName={clsx(classes.focusVisible, focusVisibleClassName)}
         className={clsx(classes.root, className)}
         {...other}

@@ -11,7 +11,7 @@ import useForkRef from '../useForkRef';
 import { useRovingTabIndexContext } from './RovingTabIndexContext';
 
 // The normalized record stored in the root registry after an item attaches to a DOM element.
-export interface RovingTabIndexEntry<Key = unknown> {
+export interface Item<Key = unknown> {
   id: Key;
   element: HTMLElement | null;
   disabled: boolean;
@@ -20,34 +20,35 @@ export interface RovingTabIndexEntry<Key = unknown> {
   selected: boolean;
 }
 
-export interface UseRovingTabIndexRootParams<Key = unknown> {
+export interface UseRovingTabIndexParams<Key = unknown> {
   activeItemId?: Key | null | undefined;
-  getDefaultActiveItemId?: ((items: RovingTabIndexEntry<Key>[]) => Key | null) | undefined;
+  getDefaultActiveItemId?: ((items: Item<Key>[]) => Key | null) | undefined;
   orientation: 'horizontal' | 'vertical';
   isRtl?: boolean | undefined;
-  isItemFocusable?: ((item: RovingTabIndexEntry<Key>) => boolean) | undefined;
+  isItemFocusable?: ((item: Item<Key>) => boolean) | undefined;
+  wrap?: boolean | undefined;
   shouldWrap?: boolean | undefined;
 }
 
-export interface UseRovingTabIndexRootReturnValue<Key = unknown> {
+export interface UseRovingTabIndexReturnValue<Key = unknown> {
   activeItemId: Key | null;
   focusActiveItem: () => Key | null;
-  focusNext: (isItemFocusableOverride?: (item: RovingTabIndexEntry<Key>) => boolean) => Key | null;
-  getActiveItem: () => RovingTabIndexEntry<Key> | null;
+  focusNext: (isItemFocusableOverride?: (item: Item<Key>) => boolean) => Key | null;
+  getActiveItem: () => Item<Key> | null;
   getContainerProps: (ref?: React.Ref<HTMLElement>) => {
     onFocus: (event: React.FocusEvent<HTMLElement>) => void;
     onKeyDown: (event: React.KeyboardEvent<HTMLElement>) => void;
     ref: (element: HTMLElement | null) => void;
   };
-  getItemMap: () => Map<Key, RovingTabIndexEntry<Key>>;
+  getItemMap: () => Map<Key, Item<Key>>;
   isItemActive: (itemId: Key) => boolean;
-  registerItem: (item: RovingTabIndexEntry<Key>) => void;
+  registerItem: (item: Item<Key>) => void;
   setActiveItemId: (itemId: Key | null) => void;
   unregisterItem: (itemId: Key) => void;
 }
 
 // The item-side inputs a consumer passes before registration. The root turns these
-// into `RovingTabIndexEntry` records once the item has a live DOM element.
+// into `Item` records once the item has a live DOM element.
 export interface UseRovingTabIndexItemParams<Key = unknown> {
   id: Key;
   ref?: React.Ref<HTMLElement> | undefined;
@@ -87,16 +88,16 @@ const SUPPORTED_KEYS = ['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', 'Home
  * - `unregisterItem`: removes an item from the roving set.
  */
 export function useRovingTabIndexRoot<Key = unknown>(
-  params: UseRovingTabIndexRootParams<Key>,
-): UseRovingTabIndexRootReturnValue<Key> {
+  params: UseRovingTabIndexParams<Key>,
+): UseRovingTabIndexReturnValue<Key> {
   const {
     activeItemId: activeItemIdProp,
     getDefaultActiveItemId,
     orientation,
     isRtl = false,
-    isItemFocusable = isRovingTabIndexEntryFocusable,
-    shouldWrap = true,
   } = params;
+  const wrap = params.wrap ?? params.shouldWrap ?? true;
+  const itemFilter: (item: Item<Key>) => boolean = params.isItemFocusable ?? isItemFocusable;
 
   const [activeItemIdState, setActiveItemIdState] = React.useState<Key | null | undefined>(
     activeItemIdProp,
@@ -117,7 +118,7 @@ export function useRovingTabIndexRoot<Key = unknown>(
   const containerRef = React.useRef<HTMLElement | null>(null);
 
   // based on https://github.com/mui/base-ui/blob/7392a928fca91fcc68b9fad3439ac61e10f3f7ba/packages/react/src/composite/list/CompositeList.tsx#L25-L35
-  const itemMapRef = React.useRef<Map<Key, RovingTabIndexEntry<Key>>>(new Map());
+  const itemMapRef = React.useRef<Map<Key, Item<Key>>>(new Map());
   // `mapTick` is a trigger used to invalidate the memo, forcing a re-render when the map changes
   const [mapTick, setMapTick] = React.useState(0);
   const orderedItems = React.useMemo(() => {
@@ -125,33 +126,33 @@ export function useRovingTabIndexRoot<Key = unknown>(
     return getOrderedItems(itemMapRef.current);
   }, [mapTick]);
 
-  const resolvedActiveItemId = resolveActiveItemId({
-    activeItemId: activeItemIdCandidate,
-    items: orderedItems,
-    isItemFocusable,
+  const resolvedActiveItemId = resolveActiveItemId<Key>(
+    activeItemIdCandidate,
+    orderedItems,
+    itemFilter,
     getDefaultActiveItemId,
-  });
+  );
 
   const activeItemIdRef = React.useRef<Key | null>(resolvedActiveItemId);
   activeItemIdRef.current = resolvedActiveItemId;
 
   const getActiveItem = React.useCallback(() => {
-    const liveOrderedItems = getOrderedItems(itemMapRef.current);
-    const liveActiveItemId = resolveActiveItemId({
-      activeItemId: activeItemIdRef.current,
-      items: liveOrderedItems,
-      isItemFocusable,
+    const snapshot = getOrderedItems(itemMapRef.current);
+    const resolvedItemId = resolveActiveItemId<Key>(
+      activeItemIdRef.current,
+      snapshot,
+      itemFilter,
       getDefaultActiveItemId,
-    });
+    );
 
-    return getItemById(liveOrderedItems, liveActiveItemId);
-  }, [getDefaultActiveItemId, isItemFocusable]);
+    return getItemById(snapshot, resolvedItemId);
+  }, [getDefaultActiveItemId, itemFilter]);
 
   const getItemMap = React.useCallback(() => {
     return itemMapRef.current;
   }, []);
 
-  const registerItem = useEventCallback((item: RovingTabIndexEntry<Key>) => {
+  const registerItem = useEventCallback((item: Item<Key>) => {
     const previousItem = itemMapRef.current.get(item.id);
 
     if (areItemsEquivalent(previousItem, item)) {
@@ -180,16 +181,16 @@ export function useRovingTabIndexRoot<Key = unknown>(
     (
       currentIndex: number,
       direction: 'next' | 'previous',
-      wrap: boolean,
-      isItemFocusableOverride?: (item: RovingTabIndexEntry<Key>) => boolean,
+      wrapNavigation: boolean,
+      isItemFocusableOverride?: (item: Item<Key>) => boolean,
     ) => {
-      const navigableItemsSnapshot = getNavigableItemsSnapshot(itemMapRef.current);
-      const nextItem = getNextActiveItem(
-        navigableItemsSnapshot,
+      const snapshot = getNavigableItemsSnapshot(itemMapRef.current);
+      const nextItem = getNextActiveItem<Key>(
+        snapshot,
         currentIndex,
         direction,
-        wrap,
-        isItemFocusableOverride ?? isItemFocusable,
+        wrapNavigation,
+        isItemFocusableOverride ?? itemFilter,
       );
 
       if (!nextItem) {
@@ -201,7 +202,7 @@ export function useRovingTabIndexRoot<Key = unknown>(
 
       return nextItem;
     },
-    [isItemFocusable],
+    [itemFilter],
   );
 
   const focusActiveItem = React.useCallback(() => {
@@ -220,11 +221,11 @@ export function useRovingTabIndexRoot<Key = unknown>(
   const getContainerProps = React.useCallback(
     (ref?: React.Ref<HTMLElement>) => {
       const onFocus = (event: React.FocusEvent<HTMLElement>) => {
-        const navigableItemsSnapshot = getNavigableItemsSnapshot(itemMapRef.current);
-        const focusedIndex = findItemIndexByElement(navigableItemsSnapshot, event.target);
+        const snapshot = getNavigableItemsSnapshot(itemMapRef.current);
+        const focusedIndex = findItemIndexByElement(snapshot, event.target);
 
         if (focusedIndex !== -1) {
-          setActiveItemIdState(navigableItemsSnapshot[focusedIndex].id);
+          setActiveItemIdState(snapshot[focusedIndex].id);
         }
       };
 
@@ -245,11 +246,11 @@ export function useRovingTabIndexRoot<Key = unknown>(
           nextItemKey = 'ArrowLeft';
         }
 
-        const navigableItemsSnapshot = getNavigableItemsSnapshot(itemMapRef.current);
+        const snapshot = getNavigableItemsSnapshot(itemMapRef.current);
         const currentFocus = getActiveElement(ownerDocument(containerRef.current));
         const isFocusOnContainer = currentFocus === containerRef.current;
         let currentIndex = getCurrentActiveItemIndex(
-          navigableItemsSnapshot,
+          snapshot,
           currentFocus,
           activeItemIdRef.current,
         );
@@ -261,7 +262,7 @@ export function useRovingTabIndexRoot<Key = unknown>(
             event.preventDefault();
 
             if (isFocusOnContainer) {
-              currentIndex = navigableItemsSnapshot.length;
+              currentIndex = snapshot.length;
             }
             break;
           case nextItemKey:
@@ -278,13 +279,13 @@ export function useRovingTabIndexRoot<Key = unknown>(
           case 'End':
             event.preventDefault();
             direction = 'previous';
-            currentIndex = navigableItemsSnapshot.length;
+            currentIndex = snapshot.length;
             break;
           default:
             return;
         }
 
-        focusItem(currentIndex, direction, shouldWrap);
+        focusItem(currentIndex, direction, wrap);
       };
 
       return {
@@ -295,17 +296,17 @@ export function useRovingTabIndexRoot<Key = unknown>(
         }),
       };
     },
-    [focusItem, isRtl, orientation, shouldWrap],
+    [focusItem, isRtl, orientation, wrap],
   );
 
   const focusNext = React.useCallback(
-    (isItemFocusableOverride?: (item: RovingTabIndexEntry<Key>) => boolean) => {
-      const navigableItemsSnapshot = getNavigableItemsSnapshot(itemMapRef.current);
+    (isItemFocusableOverride?: (item: Item<Key>) => boolean) => {
+      const snapshot = getNavigableItemsSnapshot(itemMapRef.current);
       const currentFocus = getActiveElement(ownerDocument(containerRef.current));
       const isFocusOnContainer = currentFocus === containerRef.current;
       const currentIndex = isFocusOnContainer
         ? -1
-        : getCurrentActiveItemIndex(navigableItemsSnapshot, currentFocus, activeItemIdRef.current);
+        : getCurrentActiveItemIndex(snapshot, currentFocus, activeItemIdRef.current);
 
       return focusItem(currentIndex, 'next', true, isItemFocusableOverride)?.id ?? null;
     },
@@ -343,10 +344,10 @@ export function useRovingTabIndexRoot<Key = unknown>(
 export function useRovingTabIndexItem<Key = unknown>(
   params: UseRovingTabIndexItemParams<Key>,
 ): UseRovingTabIndexItemReturnValue {
-  const rootFromContext = useRovingTabIndexContext();
-  const { activeItemId, registerItem, unregisterItem } = rootFromContext;
-  const itemRef = React.useRef<HTMLElement | null>(null);
-  const normalizedItem = React.useMemo(
+  const rootContext = useRovingTabIndexContext();
+  const { activeItemId, registerItem, unregisterItem } = rootContext;
+  const elementRef = React.useRef<HTMLElement | null>(null);
+  const item = React.useMemo(
     () => ({
       disabled: params.disabled ?? false,
       element: null,
@@ -357,21 +358,24 @@ export function useRovingTabIndexItem<Key = unknown>(
     }),
     [params.disabled, params.focusableWhenDisabled, params.id, params.selected, params.textValue],
   );
-  const normalizedItemRef = React.useRef(normalizedItem);
-  normalizedItemRef.current = normalizedItem;
+  const latestItemRef = React.useRef(item);
+  // Keep the ref callback stable across item prop changes. The callback reads the latest
+  // item metadata from this ref so React does not have to detach and re-attach the ref
+  // every time `disabled`, `selected`, or similar item state changes.
+  latestItemRef.current = item;
 
-  const handleNodeChange = React.useCallback(
-    (elementNode: HTMLElement | null) => {
-      itemRef.current = elementNode;
+  const handleElementRef = React.useCallback(
+    (element: HTMLElement | null) => {
+      elementRef.current = element;
 
-      if (elementNode == null) {
+      if (element == null) {
         // Ref detachment runs during React's commit phase. Calling `unregisterItem()`
         // synchronously here can trigger a nested state update while React is still
         // finishing that commit. Unregister in a microtask so it runs after the
         // commit completes.
         queueMicrotask(() => {
           // null check prevents stale unregisters for a remove-then-re-add edge case
-          if (itemRef.current == null) {
+          if (elementRef.current == null) {
             unregisterItem(params.id);
           }
         });
@@ -379,35 +383,28 @@ export function useRovingTabIndexItem<Key = unknown>(
       }
 
       registerItem({
-        ...normalizedItemRef.current,
-        element: elementNode,
+        ...latestItemRef.current,
+        element,
       });
     },
     [params.id, registerItem, unregisterItem],
   );
 
-  // `UseRovingTabIndexItemReturnValue.ref` is always a callback ref. `useForkRef()` only returns
-  // `null` when every input ref is `null`/`undefined`, but this call always includes
-  // `handleNodeChange`, so the merged ref callback is guaranteed to exist.
-  const handleRef = useForkRef(params.ref, handleNodeChange)!;
+  // `UseRovingTabIndexItemReturnValue.ref` must always be a callback ref. `useForkRef()`
+  // is typed to return `null` when every input ref is nullish, but this call always includes
+  // `handleElementRef`, so the merged ref cannot be `null` here.
+  const mergedRef = useForkRef(params.ref, handleElementRef)!;
 
   useEnhancedEffect(() => {
-    if (!itemRef.current) {
+    if (!elementRef.current) {
       return;
     }
 
     registerItem({
-      ...normalizedItemRef.current,
-      element: itemRef.current,
+      ...item,
+      element: elementRef.current,
     });
-  }, [
-    normalizedItem.disabled,
-    normalizedItem.focusableWhenDisabled,
-    normalizedItem.id,
-    normalizedItem.selected,
-    normalizedItem.textValue,
-    registerItem,
-  ]);
+  }, [item, registerItem]);
 
   useEnhancedEffect(() => {
     const itemId = params.id;
@@ -418,67 +415,117 @@ export function useRovingTabIndexItem<Key = unknown>(
   }, [params.id, unregisterItem]);
 
   return {
-    ref: handleRef,
+    ref: mergedRef,
     tabIndex: activeItemId === params.id ? 0 : -1,
   };
 }
 
-function resolveActiveItemId<Key>({
-  activeItemId,
-  items,
-  isItemFocusable,
-  getDefaultActiveItemId,
-}: {
-  activeItemId: Key | null | undefined;
-  items: RovingTabIndexEntry<Key>[];
-  isItemFocusable: (item: RovingTabIndexEntry<Key>) => boolean;
-  getDefaultActiveItemId?: ((items: RovingTabIndexEntry<Key>[]) => Key | null) | undefined;
-}): Key | null {
+/**
+ * Resolves which item id should own the roving tab stop for the current render.
+ *
+ * @param activeItemId The item id supplied through the root hook's `activeItemId` option.
+ *   `undefined` means "the caller did not ask for a specific item, use the default-item
+ *   logic instead". `null` means "there is intentionally no preferred item, so also fall
+ *   back to the default-item logic".
+ * @param items The ordered registered items currently in the roving set.
+ * @param isFocusable A predicate that decides whether an item may receive roving focus.
+ * @param getDefaultActiveItemId Optional caller-provided function that picks the preferred
+ *   default item when `activeItemId` is not driving the tab stop directly.
+ * @returns The id of the item that should own `tabIndex=0`, or `null` if no item is focusable.
+ */
+function resolveActiveItemId<Key>(
+  activeItemId: Key | null | undefined,
+  items: Item<Key>[],
+  isFocusable: (item: Item<Key>) => boolean,
+  getDefaultActiveItemId?: ((items: Item<Key>[]) => Key | null) | undefined,
+): Key | null {
   if (activeItemId !== undefined && activeItemId !== null) {
-    return resolveRequestedItemId(activeItemId, items, isItemFocusable);
+    return resolveRequestedItemId(activeItemId, items, isFocusable);
   }
 
-  return resolveDefaultItemId(items, isItemFocusable, getDefaultActiveItemId);
+  return resolveDefaultItemId(items, isFocusable, getDefaultActiveItemId);
 }
 
+/**
+ * Resolves the item id supplied through the root hook's `activeItemId` option.
+ *
+ * This path is used when a component such as `Tabs` or `MenuList` wants roving focus to
+ * follow a specific logical item. For example, `Tabs` can pass the selected tab's value as
+ * `activeItemId` so that the selected tab owns `tabIndex=0` when focus enters the list.
+ *
+ * @param requestedItemId The item id passed to the root hook's `activeItemId` option.
+ * @param items The ordered registered items currently in the roving set.
+ * @param isFocusable A predicate that decides whether an item may receive roving focus.
+ * @returns The same id when it still points to a focusable item. If that id no longer exists,
+ *   returns the first focusable item. If the id still exists but the item is not focusable,
+ *   returns the next focusable item after it without wrapping.
+ */
 function resolveRequestedItemId<Key>(
   requestedItemId: Key,
-  items: RovingTabIndexEntry<Key>[],
-  isItemFocusable: (item: RovingTabIndexEntry<Key>) => boolean,
+  items: Item<Key>[],
+  isFocusable: (item: Item<Key>) => boolean,
 ): Key | null {
   const requestedItemIndex = findItemIndexById(items, requestedItemId);
 
   if (requestedItemIndex === -1) {
-    return getFirstFocusableItemId(items, isItemFocusable);
+    return getFirstFocusableItemId(items, isFocusable);
   }
 
-  if (isItemFocusable(items[requestedItemIndex])) {
+  if (isFocusable(items[requestedItemIndex])) {
     return items[requestedItemIndex].id;
   }
 
-  return getNextActiveItem(items, requestedItemIndex, 'next', false, isItemFocusable)?.id ?? null;
+  return getNextActiveItem(items, requestedItemIndex, 'next', false, isFocusable)?.id ?? null;
 }
 
+/**
+ * Resolves the default active item when the caller is not driving roving focus with
+ * `activeItemId`.
+ *
+ * This path is used on the initial render and whenever the caller leaves the choice of tab
+ * stop to the hook. `getDefaultActiveItemId` lets a component prefer a specific logical item,
+ * such as the selected menu item, before falling back to the first focusable item.
+ *
+ * @param items The ordered registered items currently in the roving set.
+ * @param isFocusable A predicate that decides whether an item may receive roving focus.
+ * @param getDefaultActiveItemId Optional caller-provided function that chooses which item
+ *   should own the tab stop before the generic "first focusable item" fallback runs.
+ * @returns The default item id when it points to a focusable item, otherwise the first
+ *   focusable item in the snapshot, or `null` when none are focusable.
+ */
 function resolveDefaultItemId<Key>(
-  items: RovingTabIndexEntry<Key>[],
-  isItemFocusable: (item: RovingTabIndexEntry<Key>) => boolean,
-  getDefaultActiveItemId?: ((items: RovingTabIndexEntry<Key>[]) => Key | null) | undefined,
+  items: Item<Key>[],
+  isFocusable: (item: Item<Key>) => boolean,
+  getDefaultActiveItemId?: ((items: Item<Key>[]) => Key | null) | undefined,
 ): Key | null {
   const defaultItemId = getDefaultActiveItemId?.(items);
 
   if (defaultItemId !== null && defaultItemId !== undefined) {
     const defaultItem = getItemById(items, defaultItemId);
 
-    if (defaultItem && isItemFocusable(defaultItem)) {
+    if (defaultItem && isFocusable(defaultItem)) {
       return defaultItem.id;
     }
   }
 
-  return getFirstFocusableItemId(items, isItemFocusable);
+  return getFirstFocusableItemId(items, isFocusable);
 }
 
+/**
+ * Finds the best starting index for keyboard navigation.
+ *
+ * This is used immediately before keyboard navigation and `focusNext()` navigation. It prefers
+ * the item that currently holds DOM focus, but if focus is on the container or outside the item
+ * set it falls back to the last known active item id.
+ *
+ * @param items The navigable item snapshot used for the current keyboard interaction.
+ * @param currentFocus The element that currently has DOM focus, if any.
+ * @param fallbackActiveItemId The last known active item id when focus is not on an item.
+ * @returns The focused item's index when focus is currently on an item. Otherwise, the index
+ *   of the fallback active item id, or `-1` when no matching item exists.
+ */
 function getCurrentActiveItemIndex<Key>(
-  items: RovingTabIndexEntry<Key>[],
+  items: Item<Key>[],
   currentFocus: Element | null,
   fallbackActiveItemId: Key | null,
 ) {
@@ -493,12 +540,27 @@ function getCurrentActiveItemIndex<Key>(
   return findItemIndexById(items, fallbackActiveItemId);
 }
 
+/**
+ * Walks the item snapshot to find the next focusable item in the requested direction.
+ *
+ * This is the shared navigation primitive used by keyboard handling and imperative helpers
+ * such as `focusNext()`. It starts from the supplied index, advances through the snapshot in
+ * the requested direction, and skips over items that fail the `isFocusable` predicate.
+ *
+ * @param items The ordered navigable item snapshot.
+ * @param currentIndex The index to start from. Use `-1` to start before the first item or
+ *   `items.length` to start after the last item.
+ * @param direction The direction to move through the snapshot.
+ * @param wrap Whether navigation should wrap around at the ends of the list.
+ * @param isFocusable A predicate that decides whether an item may receive roving focus.
+ * @returns The next focusable item record, or `null` when no focusable item can be reached.
+ */
 function getNextActiveItem<Key>(
-  items: RovingTabIndexEntry<Key>[],
+  items: Item<Key>[],
   currentIndex: number,
   direction: 'next' | 'previous',
   wrap: boolean,
-  isItemFocusable: (item: RovingTabIndexEntry<Key>) => boolean,
+  isFocusable: (item: Item<Key>) => boolean,
 ) {
   const lastIndex = items.length - 1;
 
@@ -519,7 +581,7 @@ function getNextActiveItem<Key>(
 
     const nextItem = items[nextIndex];
 
-    if (!nextItem || !isItemFocusable(nextItem)) {
+    if (!nextItem || !isFocusable(nextItem)) {
       nextIndex = getNextIndex(nextIndex, lastIndex, direction, wrap);
     } else {
       return nextItem;
@@ -530,21 +592,21 @@ function getNextActiveItem<Key>(
 }
 
 function getFirstFocusableItemId<Key>(
-  items: RovingTabIndexEntry<Key>[],
-  isItemFocusable: (item: RovingTabIndexEntry<Key>) => boolean,
+  items: Item<Key>[],
+  isFocusable: (item: Item<Key>) => boolean,
 ): Key | null {
-  return items.find((item) => isItemFocusable(item))?.id ?? null;
+  return items.find((item) => isFocusable(item))?.id ?? null;
 }
 
-function getItemById<Key>(items: RovingTabIndexEntry<Key>[], itemId: Key | null) {
+function getItemById<Key>(items: Item<Key>[], itemId: Key | null) {
   return itemId === null ? null : (items.find((item) => item.id === itemId) ?? null);
 }
 
-function findItemIndexById<Key>(items: RovingTabIndexEntry<Key>[], itemId: Key | null) {
+function findItemIndexById<Key>(items: Item<Key>[], itemId: Key | null) {
   return itemId === null ? -1 : items.findIndex((item) => item.id === itemId);
 }
 
-function findItemIndexByElement<Key>(items: RovingTabIndexEntry<Key>[], element: Element | null) {
+function findItemIndexByElement<Key>(items: Item<Key>[], element: Element | null) {
   if (!element) {
     return -1;
   }
@@ -552,7 +614,7 @@ function findItemIndexByElement<Key>(items: RovingTabIndexEntry<Key>[], element:
   return items.findIndex((item) => item.element === element || item.element?.contains(element));
 }
 
-function getOrderedItems<Key>(itemMap: Map<Key, RovingTabIndexEntry<Key>>) {
+function getOrderedItems<Key>(itemMap: Map<Key, Item<Key>>) {
   const items = Array.from(itemMap.values());
 
   if (items.every((item) => item.element === null)) {
@@ -567,14 +629,11 @@ function getOrderedItems<Key>(itemMap: Map<Key, RovingTabIndexEntry<Key>>) {
   return [...connectedItems, ...disconnectedItems];
 }
 
-function getNavigableItemsSnapshot<Key>(itemMap: Map<Key, RovingTabIndexEntry<Key>>) {
+function getNavigableItemsSnapshot<Key>(itemMap: Map<Key, Item<Key>>) {
   return getOrderedItems(itemMap).filter(isConnectedItem);
 }
 
-function areItemsEquivalent<Key>(
-  previousItem: RovingTabIndexEntry<Key> | undefined,
-  nextItem: RovingTabIndexEntry<Key>,
-) {
+function areItemsEquivalent<Key>(previousItem: Item<Key> | undefined, nextItem: Item<Key>) {
   if (!previousItem) {
     return false;
   }
@@ -610,7 +669,7 @@ function getNextIndex(
   return currentIndex - 1;
 }
 
-export function isRovingTabIndexEntryFocusable<Key>(item: RovingTabIndexEntry<Key>) {
+export function isItemFocusable(item: Item<unknown>) {
   if (!item.element) {
     return false;
   }
@@ -626,9 +685,7 @@ export function isRovingTabIndexEntryFocusable<Key>(item: RovingTabIndexEntry<Ke
   );
 }
 
-function isConnectedItem<Key>(
-  item: RovingTabIndexEntry<Key>,
-): item is RovingTabIndexEntry<Key> & { element: HTMLElement } {
+function isConnectedItem<Key>(item: Item<Key>): item is Item<Key> & { element: HTMLElement } {
   return item.element !== null && item.element.isConnected;
 }
 

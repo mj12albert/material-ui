@@ -1,6 +1,7 @@
 'use client';
 import * as React from 'react';
 import PropTypes from 'prop-types';
+import { isItemFocusable } from '@mui/utils/useRovingTabIndex';
 import ownerDocument from '../utils/ownerDocument';
 import List from '../List';
 import getActiveElement from '../utils/getActiveElement';
@@ -9,14 +10,10 @@ import focusWithVisible from '../utils/focusWithVisible';
 import useEventCallback from '../utils/useEventCallback';
 import useForkRef from '../utils/useForkRef';
 import useEnhancedEffect from '../utils/useEnhancedEffect';
-import {
-  isRovingTabIndexEntryFocusable,
-  RovingTabIndexProvider,
-  useRovingTabIndexRoot,
-} from '../utils/useRovingTabIndex';
+import { RovingTabIndexProvider, useRovingTabIndexRoot } from '../utils/useRovingTabIndex';
 import ownerWindow from '../utils/ownerWindow';
 import { useSelectFocusSource } from '../Select/utils';
-import MenuListContext from './MenuListContext';
+import { MenuListContext } from './MenuListContext';
 
 function getItemText(itemOrElement) {
   const element = itemOrElement?.element ?? itemOrElement;
@@ -62,7 +59,7 @@ function isItemFocusableWithTextCriteria(item, criteria) {
     return false;
   }
 
-  return isRovingTabIndexEntryFocusable(item);
+  return isItemFocusable(item);
 }
 
 // Menu auto-focus is not always keyboard-driven. On open we often move focus to the
@@ -122,26 +119,28 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
     (items) => {
       if (variant === 'selectedMenu') {
         return (
-          items.find((item) => item.selected && isRovingTabIndexEntryFocusable(item))?.id ??
-          items.find((item) => isRovingTabIndexEntryFocusable(item))?.id ??
+          items.find((item) => item.selected && isItemFocusable(item))?.id ??
+          items.find((item) => isItemFocusable(item))?.id ??
           null
         );
       }
 
-      return items.find((item) => isRovingTabIndexEntryFocusable(item))?.id ?? null;
+      return items.find((item) => isItemFocusable(item))?.id ?? null;
     },
     [variant],
   );
 
-  const rovingTabIndex = useRovingTabIndexRoot({
+  const rovingContainer = useRovingTabIndexRoot({
     activeItemId: undefined,
     getDefaultActiveItemId,
     orientation: 'vertical',
-    shouldWrap: !disableListWrap,
+    wrap: !disableListWrap,
   });
-  const { activeItemId, focusNext, getActiveItem, getContainerProps } = rovingTabIndex;
+  const { activeItemId, focusNext, getActiveItem, getContainerProps } = rovingContainer;
 
   const focusAutoFocusTarget = useEventCallback((force = false) => {
+    // `force` is used by the imperative action when Menu asks MenuList to restore focus,
+    // even if this list already ran its one-time auto-focus path on an earlier render.
     if (!listRef.current || (!force && hasAutoFocusedRef.current)) {
       return null;
     }
@@ -217,17 +216,17 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
     [focusAutoFocusTarget],
   );
 
-  const rovingTabIndexContainerProps = getContainerProps();
-  const handleRef = useForkRef(listRef, rovingTabIndexContainerProps.ref, ref);
+  const rovingContainerProps = getContainerProps();
+  const handleRef = useForkRef(listRef, rovingContainerProps.ref, ref);
   const menuListContextValue = React.useMemo(
     () => ({
-      disabledItemsFocusable,
+      itemsFocusableWhenDisabled: disabledItemsFocusable,
       variant,
     }),
     [disabledItemsFocusable, variant],
   );
 
-  const handleKeyDown = (event) => {
+  const handleKeyDown = useEventCallback((event) => {
     const isModifierKeyPressed = event.ctrlKey || event.metaKey || event.altKey;
 
     if (isModifierKeyPressed && onKeyDown) {
@@ -236,7 +235,7 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
       return;
     }
 
-    rovingTabIndexContainerProps.onKeyDown(event);
+    rovingContainerProps.onKeyDown(event);
 
     if (event.key.length === 1) {
       const criteria = textCriteriaRef.current;
@@ -275,7 +274,7 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
     if (onKeyDown) {
       onKeyDown(event);
     }
-  };
+  });
 
   return (
     <List
@@ -283,12 +282,12 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
       ref={handleRef}
       className={className}
       onKeyDown={handleKeyDown}
-      onFocus={rovingTabIndexContainerProps.onFocus}
+      onFocus={rovingContainerProps.onFocus}
       tabIndex={-1}
       {...other}
     >
       <MenuListContext.Provider value={menuListContextValue}>
-        <RovingTabIndexProvider value={rovingTabIndex}>{children}</RovingTabIndexProvider>
+        <RovingTabIndexProvider value={rovingContainer}>{children}</RovingTabIndexProvider>
       </MenuListContext.Provider>
     </List>
   );

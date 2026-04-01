@@ -56,24 +56,22 @@ const StepButtonRoot = styled(ButtonBase, {
   ],
 });
 
-const StepButtonWithRovingTabIndex = React.forwardRef(
-  function StepButtonWithRovingTabIndex(props, ref) {
-    // eslint-disable-next-line react/prop-types
-    const { children, disabled, index, ...other } = props;
+const RovingStepButton = React.forwardRef(function RovingStepButton(props, ref) {
+  // eslint-disable-next-line react/prop-types
+  const { children, disabled, index, ...other } = props;
 
-    const rovingTabIndexItemProps = useRovingTabIndexItem({
-      id: index,
-      ref,
-      disabled,
-    });
+  const rovingItemProps = useRovingTabIndexItem({
+    id: index,
+    ref,
+    disabled,
+  });
 
-    return (
-      <StepButtonRoot {...rovingTabIndexItemProps} {...other}>
-        {children}
-      </StepButtonRoot>
-    );
-  },
-);
+  return (
+    <StepButtonRoot {...rovingItemProps} {...other}>
+      {children}
+    </StepButtonRoot>
+  );
+});
 
 const StepButton = React.forwardRef(function StepButton(inProps, ref) {
   const props = useDefaultProps({ props: inProps, name: 'MuiStepButton' });
@@ -113,9 +111,9 @@ const StepButton = React.forwardRef(function StepButton(inProps, ref) {
 
   if (isTabList) {
     return (
-      <StepButtonWithRovingTabIndex {...stepButtonProps} index={index} ref={ref}>
+      <RovingStepButton {...stepButtonProps} index={index} ref={ref}>
         {child}
-      </StepButtonWithRovingTabIndex>
+      </RovingStepButton>
     );
   }
 

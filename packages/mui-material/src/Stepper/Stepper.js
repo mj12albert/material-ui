@@ -64,7 +64,7 @@ const StepperRoot = styled('ol', {
 
 const defaultConnector = <StepConnector />;
 
-function StepperWithRovingTabIndex(props) {
+function RovingStepper(props) {
   // eslint-disable-next-line react/prop-types
   const { children, className, component, forwardedRef, isRtl, orientation, ownerState, ...other } =
     props;
@@ -177,7 +177,7 @@ const Stepper = React.forwardRef(function Stepper(inProps, ref) {
 
   return (
     <StepperContext.Provider value={contextValue}>
-      <StepperWithRovingTabIndex
+      <RovingStepper
         forwardedRef={ref}
         isRtl={isRtl}
         className={clsx(classes.root, className)}
@@ -187,7 +187,7 @@ const Stepper = React.forwardRef(function Stepper(inProps, ref) {
         {...other}
       >
         {steps}
-      </StepperWithRovingTabIndex>
+      </RovingStepper>
     </StepperContext.Provider>
   );
 });

@@ -222,8 +222,8 @@ const Tab = React.forwardRef(function Tab(inProps, ref) {
   // the roving item map is still empty. In that window, fall back to `tabIndex={0}`
   // for the selected tab so the rendered markup is immediately keyboard-accessible
   // and hydration stays consistent until item registration takes over.
-  const shouldUseSelectedTabIndexFallback = rovingContext.getItemMap().size === 0 && selected;
-  const tabIndex = shouldUseSelectedTabIndexFallback ? 0 : rovingItemProps.tabIndex;
+  const shouldUseSelectedTabStopFallback = rovingContext.getItemMap().size === 0 && selected;
+  const tabIndex = shouldUseSelectedTabStopFallback ? 0 : rovingItemProps.tabIndex;
 
   const ownerState = {
     ...props,

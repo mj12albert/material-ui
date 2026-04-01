@@ -71,7 +71,7 @@ function isItemFocusableWithTextCriteria(item, criteria) {
 // compete with the selected item. Preserve focus-visible only when the caller gave us
 // an explicit focus source (for example Select forwarding keyboard intent); otherwise
 // focus the item without requesting focus-visible styling.
-function focusAutoFocusItem(element, focusSource) {
+function focusInitialItem(element, focusSource) {
   if (focusSource != null) {
     focusWithVisible(element, focusSource);
     return;
@@ -95,8 +95,8 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
     // private
     // eslint-disable-next-line react/prop-types
     actions,
-    autoFocus = false,
-    autoFocusItem = false,
+    autoFocus: autoFocusList = false,
+    autoFocusItem: autoFocusActiveItem = false,
     children,
     className,
     disabledItemsFocusable = false,
@@ -106,7 +106,7 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
     ...other
   } = props;
   const listRef = React.useRef(null);
-  const hasAutoFocusedRef = React.useRef(false);
+  const hasFocusedInitialTargetRef = React.useRef(false);
   const focusSource = useSelectFocusSource();
   const textCriteriaRef = React.useRef({
     keys: [],
@@ -138,23 +138,24 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
   });
   const { activeItemId, focusNext, getActiveItem, getContainerProps } = rovingContainer;
 
-  const focusAutoFocusTarget = useEventCallback((force = false) => {
-    // `force` is used by the imperative action when Menu asks MenuList to restore focus,
-    // even if this list already ran its one-time auto-focus path on an earlier render.
-    if (!listRef.current || (!force && hasAutoFocusedRef.current)) {
+  const focusInitialTarget = useEventCallback((force = false) => {
+    // `force` is used by the imperative action when `Menu` asks `MenuList` to restore its
+    // initial focus target after the popover finishes entering, even if this list already
+    // completed its normal one-time initial-focus path on an earlier render.
+    if (!listRef.current || (!force && hasFocusedInitialTargetRef.current)) {
       return null;
     }
 
-    if (autoFocusItem) {
+    if (autoFocusActiveItem) {
       const activeItem = getActiveItem();
 
       if (activeItem?.element) {
-        focusAutoFocusItem(activeItem.element, focusSource);
-        hasAutoFocusedRef.current = true;
+        focusInitialItem(activeItem.element, focusSource);
+        hasFocusedInitialTargetRef.current = true;
         return activeItem.element;
       }
 
-      if (!autoFocus) {
+      if (!autoFocusList) {
         return null;
       }
 
@@ -164,25 +165,25 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
       return listRef.current;
     }
 
-    if (!autoFocus) {
+    if (!autoFocusList) {
       return null;
     }
 
     listRef.current.focus();
-    hasAutoFocusedRef.current = true;
+    hasFocusedInitialTargetRef.current = true;
     return listRef.current;
   });
 
   useEnhancedEffect(() => {
-    if (!autoFocus && !autoFocusItem) {
-      hasAutoFocusedRef.current = false;
+    if (!autoFocusList && !autoFocusActiveItem) {
+      hasFocusedInitialTargetRef.current = false;
       return undefined;
     }
 
-    focusAutoFocusTarget();
+    focusInitialTarget();
 
     return undefined;
-  }, [activeItemId, autoFocus, autoFocusItem, focusAutoFocusTarget]);
+  }, [activeItemId, autoFocusActiveItem, autoFocusList, focusInitialTarget]);
 
   React.useImperativeHandle(
     actions,
@@ -199,7 +200,7 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
         }
         return listRef.current;
       },
-      focusAutoFocusTarget: () => {
+      focusInitialTarget: () => {
         if (!listRef.current) {
           return null;
         }
@@ -210,10 +211,10 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
           return currentFocus;
         }
 
-        return focusAutoFocusTarget(true);
+        return focusInitialTarget(true);
       },
     }),
-    [focusAutoFocusTarget],
+    [focusInitialTarget],
   );
 
   const rovingContainerProps = getContainerProps();

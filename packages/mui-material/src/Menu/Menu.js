@@ -91,7 +91,8 @@ const Menu = React.forwardRef(function Menu(inProps, ref) {
 
   const classes = useUtilityClasses(ownerState);
 
-  const autoFocusItem = autoFocus && !disableAutoFocusItem && open;
+  const shouldManageInitialFocus = autoFocus && open;
+  const shouldAutoFocusActiveItem = shouldManageInitialFocus && !disableAutoFocusItem;
 
   const menuListActionsRef = React.useRef(null);
 
@@ -101,8 +102,8 @@ const Menu = React.forwardRef(function Menu(inProps, ref) {
         direction: isRtl ? 'rtl' : 'ltr',
       });
 
-      if (autoFocus) {
-        menuListActionsRef.current.focusAutoFocusTarget?.();
+      if (shouldManageInitialFocus) {
+        menuListActionsRef.current.focusInitialTarget?.();
       }
     }
   };
@@ -201,8 +202,8 @@ const Menu = React.forwardRef(function Menu(inProps, ref) {
     >
       <ListSlot
         actions={menuListActionsRef}
-        autoFocus={autoFocus && open}
-        autoFocusItem={autoFocusItem}
+        autoFocus={shouldManageInitialFocus}
+        autoFocusItem={shouldAutoFocusActiveItem}
         variant={variant}
         {...listSlotProps}
       >

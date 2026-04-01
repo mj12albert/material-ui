@@ -169,7 +169,7 @@ const MenuItemRoot = styled(ButtonBase, {
 const MenuItem = React.forwardRef(function MenuItem(inProps, ref) {
   const props = useDefaultProps({ props: inProps, name: 'MuiMenuItem' });
   const {
-    autoFocus = false,
+    autoFocus: shouldAutoFocusOnMount = false,
     component = 'li',
     dense = false,
     divider = false,
@@ -196,7 +196,7 @@ const MenuItem = React.forwardRef(function MenuItem(inProps, ref) {
 
   const menuItemRef = React.useRef(null);
   useEnhancedEffect(() => {
-    if (autoFocus) {
+    if (shouldAutoFocusOnMount) {
       if (menuItemRef.current) {
         focusWithVisible(menuItemRef.current, focusSource);
       } else if (process.env.NODE_ENV !== 'production') {
@@ -206,7 +206,7 @@ const MenuItem = React.forwardRef(function MenuItem(inProps, ref) {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoFocus]);
+  }, [shouldAutoFocusOnMount]);
 
   const ownerState = {
     ...props,

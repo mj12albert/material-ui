@@ -22,7 +22,7 @@ export function useMenuListContext() {
 
   if (context === undefined) {
     throw new Error(
-      'MUI: MenuListContext is missing. Menu items must be placed within a menu list context provider.',
+      'MUI: MenuListContext is missing. MenuItems must be placed within Menu or MenuList.',
     );
   }
 

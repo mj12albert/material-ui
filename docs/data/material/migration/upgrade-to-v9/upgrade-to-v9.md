@@ -270,19 +270,25 @@ The `StepButton` has:
 
 ### Tabs
 
-The `tabindex` attribute for each tab will be changed on Arrow Key or Home / End navigation. Previously, we only moved the focus on keyboard navigation. Now, we move the focus and also add the `tabindex="0"` to the focused element. The previously focused element will have its `tabindex` updated to `-1` in order to keep only one focusable `Tab` at a time.
+The `tabindex` attribute for each tab will be changed on Arrow Key or Home / End navigation. Previously, keyboard navigation moved DOM focus without updating `tabindex` on the focused `Tab`. Now, we move DOM focus and also add the `tabindex="0"` to the focused `Tab`. Other tabs will have `tabindex="-1"` to keep only one focusable `Tab` at a time.
 
 Selecting a `Tab` will update the focus and `tabindex` as before.
 
+`Tab`s not placed inside `Tabs` will now throw an error.
+
 ### Menu and MenuList
 
-The `tabindex` attribute for each menu item will be changed on Arrow Key, Home / End or Character Key navigation. Previously, we only moved the focus on keyboard navigation. Now, we move the focus and also add the `tabindex="0"` to the focused element. The previously focused element will have its `tabindex` updated to `-1` in order to keep only one focusable `MenuItem` at a time.
+When using `variant="selectedMenu"`, the `tabindex` attribute for each menu item will change on Arrow Key, Home / End or Character Key navigation. Previously, keyboard navigation moved DOM focus without updating `tabindex` on focused items. Now, we move DOM focus and also add `tabindex="0"` to the focused element. The previously focused element will have its `tabindex` updated to `-1` in order to keep only one focusable `MenuItem` at a time.
 
-This change also applies to the `Menu` since it uses `MenuList`.
-
-Selecting a `MenuItem` will update the focus and `tabindex` as before.
+This change also applies both `Menu` and `MenuList` with `variant="selectedMenu"`.
 
 The `autoFocus` prop in `MenuList` does not set `tabindex="0"` on the `List` component anymore. It will always stay as `-1`.
+
+`MenuItem`s will throw an error when rendered outside of `Menu` or `MenuList`.
+
+Custom non-interactive menu content such as `ListSubheader` or `Divider` no longer need to set `muiSkipListHighlight` to opt-out of the menu's focus management.
+
+Custom children that set `role="menuitem"` but do not wrap the `MenuItem` component are no longer supported inside `Menu` or `MenuList`.
 
 ## Deprecated APIs removed (Breaking)
 

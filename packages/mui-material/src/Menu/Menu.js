@@ -91,7 +91,7 @@ const Menu = React.forwardRef(function Menu(inProps, ref) {
 
   const classes = useUtilityClasses(ownerState);
 
-  const shouldManageInitialFocus = autoFocus && open;
+  const shouldManageInitialFocus = autoFocus && open; // `&& open` prevents a Menu with `keepMounted={true}` from accidentally stealing focus
   const shouldAutoFocusActiveItem = shouldManageInitialFocus && !disableAutoFocusItem;
 
   const menuListActionsRef = React.useRef(null);

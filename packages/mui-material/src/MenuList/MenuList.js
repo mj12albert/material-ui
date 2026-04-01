@@ -263,7 +263,7 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
       if (
         criteria.previousKeyMatched &&
         (keepFocusOnCurrent ||
-          focusNext((item) => isItemFocusableWithTextCriteria(item, criteria)) !== null)
+          focusNext((item) => isItemFocusableWithTextCriteria(item, criteria)) != null)
       ) {
         event.preventDefault();
       } else {

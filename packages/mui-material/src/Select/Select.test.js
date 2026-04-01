@@ -1514,7 +1514,7 @@ describe('<Select />', () => {
       <Select
         value={1}
         inputRef={(input) => {
-          if (input !== null) {
+          if (input != null) {
             input.focus();
           }
         }}

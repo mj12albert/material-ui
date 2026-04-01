@@ -564,7 +564,7 @@ function resolveActiveItemId<Key>(
   isFocusable: (item: Item<Key>) => boolean,
   getDefaultActiveItemId?: ((items: Item<Key>[]) => Key | null) | undefined,
 ): Key | null {
-  if (activeItemId !== undefined && activeItemId !== null) {
+  if (activeItemId != null) {
     return resolveRequestedItemId(activeItemId, items, isFocusable);
   }
 
@@ -632,7 +632,7 @@ function resolveDefaultItemId<Key>(
 ): Key | null {
   const defaultItemId = getDefaultActiveItemId?.(items);
 
-  if (defaultItemId !== null && defaultItemId !== undefined) {
+  if (defaultItemId != null) {
     const defaultItem = getItemById(items, defaultItemId);
 
     if (defaultItem && isFocusable(defaultItem)) {
@@ -731,11 +731,11 @@ function getFirstFocusableItemId<Key>(
 }
 
 function getItemById<Key>(items: Item<Key>[], itemId: Key | null) {
-  return itemId === null ? null : (items.find((item) => item.id === itemId) ?? null);
+  return itemId == null ? null : (items.find((item) => item.id === itemId) ?? null);
 }
 
 function findItemIndexById<Key>(items: Item<Key>[], itemId: Key | null) {
-  return itemId === null ? -1 : items.findIndex((item) => item.id === itemId);
+  return itemId == null ? -1 : items.findIndex((item) => item.id === itemId);
 }
 
 function findItemIndexByElement<Key>(items: Item<Key>[], element: Element | null) {
@@ -749,7 +749,7 @@ function findItemIndexByElement<Key>(items: Item<Key>[], element: Element | null
 function getOrderedItems<Key>(itemMap: Map<Key, Item<Key>>) {
   const items = Array.from(itemMap.values());
 
-  if (items.every((item) => item.element === null)) {
+  if (items.every((item) => item.element == null)) {
     return items;
   }
 
@@ -804,7 +804,7 @@ export function isItemFocusable(item: Item<unknown>) {
 }
 
 function isConnectedItem<Key>(item: Item<Key>): item is Item<Key> & { element: HTMLElement } {
-  return item.element !== null && item.element.isConnected;
+  return item.element != null && item.element.isConnected;
 }
 
 /* eslint-disable no-bitwise */

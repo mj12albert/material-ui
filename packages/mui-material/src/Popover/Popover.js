@@ -231,13 +231,13 @@ const Popover = React.forwardRef(function Popover(inProps, ref) {
       const widthThreshold = containerWindow.innerWidth - marginThreshold;
 
       // Check if the vertical axis needs shifting
-      if (marginThreshold !== null && top < marginThreshold) {
+      if (marginThreshold != null && top < marginThreshold) {
         const diff = top - marginThreshold;
 
         top -= diff;
 
         elemTransformOrigin.vertical += diff;
-      } else if (marginThreshold !== null && bottom > heightThreshold) {
+      } else if (marginThreshold != null && bottom > heightThreshold) {
         const diff = bottom - heightThreshold;
 
         top -= diff;
@@ -260,7 +260,7 @@ const Popover = React.forwardRef(function Popover(inProps, ref) {
       }
 
       // Check if the horizontal axis needs shifting
-      if (marginThreshold !== null && left < marginThreshold) {
+      if (marginThreshold != null && left < marginThreshold) {
         const diff = left - marginThreshold;
         left -= diff;
         elemTransformOrigin.horizontal += diff;
@@ -290,10 +290,10 @@ const Popover = React.forwardRef(function Popover(inProps, ref) {
 
     const positioning = getPositioningStyle(element);
 
-    if (positioning.top !== null) {
+    if (positioning.top != null) {
       element.style.setProperty('top', positioning.top);
     }
-    if (positioning.left !== null) {
+    if (positioning.left != null) {
       element.style.left = positioning.left;
     }
     element.style.transformOrigin = positioning.transformOrigin;

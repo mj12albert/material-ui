@@ -22,7 +22,7 @@ import useSlot from '../utils/useSlot';
 import getActiveElement from '../utils/getActiveElement';
 import ownerDocument from '../utils/ownerDocument';
 import useForkRef from '../utils/useForkRef';
-import { RovingTabIndexProvider, useRovingTabIndexRoot } from '../utils/useRovingTabIndex';
+import { RovingTabIndexContext, useRovingTabIndexRoot } from '../utils/useRovingTabIndex';
 
 const useUtilityClasses = (ownerState) => {
   const {
@@ -849,7 +849,9 @@ const Tabs = React.forwardRef(function Tabs(inProps, ref) {
           role="tablist"
           {...listSlotProps}
         >
-          <RovingTabIndexProvider value={rovingContainer}>{children}</RovingTabIndexProvider>
+          <RovingTabIndexContext.Provider value={rovingContainer}>
+            {children}
+          </RovingTabIndexContext.Provider>
         </ListSlot>
         {mounted && indicator}
       </ScrollerSlot>

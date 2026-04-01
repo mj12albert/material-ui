@@ -28,5 +28,4 @@ export function useStepperContext(): StepperContextType | {} {
   return React.useContext(StepperContext);
 }
 
-export const StepperContextProvider = StepperContext.Provider;
 export default StepperContext;

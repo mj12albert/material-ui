@@ -10,7 +10,7 @@ import focusWithVisible from '../utils/focusWithVisible';
 import useEventCallback from '../utils/useEventCallback';
 import useForkRef from '../utils/useForkRef';
 import useEnhancedEffect from '../utils/useEnhancedEffect';
-import { RovingTabIndexProvider, useRovingTabIndexRoot } from '../utils/useRovingTabIndex';
+import { RovingTabIndexContext, useRovingTabIndexRoot } from '../utils/useRovingTabIndex';
 import ownerWindow from '../utils/ownerWindow';
 import { useSelectFocusSource } from '../Select/utils';
 import { MenuListContext } from './MenuListContext';
@@ -287,7 +287,9 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
       {...other}
     >
       <MenuListContext.Provider value={menuListContextValue}>
-        <RovingTabIndexProvider value={rovingContainer}>{children}</RovingTabIndexProvider>
+        <RovingTabIndexContext.Provider value={rovingContainer}>
+          {children}
+        </RovingTabIndexContext.Provider>
       </MenuListContext.Provider>
     </List>
   );

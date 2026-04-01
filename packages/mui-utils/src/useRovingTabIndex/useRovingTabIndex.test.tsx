@@ -3,10 +3,11 @@ import { expect } from 'chai';
 import { act, createRenderer, fireEvent, screen } from '@mui/internal-test-utils';
 import {
   type UseRovingTabIndexParams,
+  type UseRovingTabIndexReturnValue,
   useRovingTabIndexRoot,
   useRovingTabIndexItem,
 } from './useRovingTabIndex';
-import { RovingTabIndexProvider } from './RovingTabIndexContext';
+import { RovingTabIndexContext } from './RovingTabIndexContext';
 
 type TestItem = {
   id: string;
@@ -57,19 +58,32 @@ function TestComponent(
   props: Partial<UseRovingTabIndexParams<string>> & {
     items?: TestItem[];
     buttonRef?: React.Ref<HTMLButtonElement>;
+    shouldWrap?: boolean;
   },
 ) {
-  const { items = defaultItems, buttonRef, ...options } = props;
-  const root = useRovingTabIndexRoot({
-    orientation: 'horizontal',
-    ...options,
-  });
+  const {
+    items = defaultItems,
+    buttonRef,
+    orientation = 'horizontal',
+    shouldWrap,
+    ...options
+  } = props;
+  const rootParams: UseRovingTabIndexParams<string> & { shouldWrap?: boolean } = {
+    ...(options as Omit<UseRovingTabIndexParams<string>, 'orientation'>),
+    orientation,
+  };
+
+  if (shouldWrap !== undefined) {
+    rootParams.shouldWrap = shouldWrap;
+  }
+
+  const root = useRovingTabIndexRoot(rootParams);
 
   focusNext = root.focusNext;
   getItemMap = root.getItemMap;
 
   return (
-    <RovingTabIndexProvider value={root}>
+    <RovingTabIndexContext.Provider value={root as UseRovingTabIndexReturnValue<unknown>}>
       <div data-testid="container" tabIndex={-1} {...root.getContainerProps()}>
         {items
           .filter((item) => item.render !== false)
@@ -81,7 +95,7 @@ function TestComponent(
             />
           ))}
       </div>
-    </RovingTabIndexProvider>
+    </RovingTabIndexContext.Provider>
   );
 }
 

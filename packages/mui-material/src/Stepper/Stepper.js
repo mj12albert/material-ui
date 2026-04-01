@@ -7,10 +7,10 @@ import composeClasses from '@mui/utils/composeClasses';
 import { useRtl } from '@mui/system/RtlProvider';
 import { styled } from '../zero-styled';
 import { useDefaultProps } from '../DefaultPropsProvider';
-import { RovingTabIndexProvider, useRovingTabIndexRoot } from '../utils/useRovingTabIndex';
+import { RovingTabIndexContext, useRovingTabIndexRoot } from '../utils/useRovingTabIndex';
 import { getStepperUtilityClass } from './stepperClasses';
 import StepConnector from '../StepConnector';
-import { StepperContextProvider } from './StepperContext';
+import StepperContext from './StepperContext';
 import StepButton from '../StepButton';
 
 const useUtilityClasses = (ownerState) => {
@@ -76,7 +76,7 @@ function StepperWithRovingTabIndex(props) {
   const rovingContainerProps = rovingContainer.getContainerProps(forwardedRef);
 
   return (
-    <RovingTabIndexProvider value={rovingContainer}>
+    <RovingTabIndexContext.Provider value={rovingContainer}>
       <StepperRoot
         as={component}
         ownerState={ownerState}
@@ -88,7 +88,7 @@ function StepperWithRovingTabIndex(props) {
       >
         {children}
       </StepperRoot>
-    </RovingTabIndexProvider>
+    </RovingTabIndexContext.Provider>
   );
 }
 
@@ -161,7 +161,7 @@ const Stepper = React.forwardRef(function Stepper(inProps, ref) {
 
   if (!isTabList) {
     return (
-      <StepperContextProvider value={contextValue}>
+      <StepperContext.Provider value={contextValue}>
         <StepperRoot
           as={component}
           ownerState={ownerState}
@@ -171,12 +171,12 @@ const Stepper = React.forwardRef(function Stepper(inProps, ref) {
         >
           {steps}
         </StepperRoot>
-      </StepperContextProvider>
+      </StepperContext.Provider>
     );
   }
 
   return (
-    <StepperContextProvider value={contextValue}>
+    <StepperContext.Provider value={contextValue}>
       <StepperWithRovingTabIndex
         forwardedRef={ref}
         isRtl={isRtl}
@@ -188,7 +188,7 @@ const Stepper = React.forwardRef(function Stepper(inProps, ref) {
       >
         {steps}
       </StepperWithRovingTabIndex>
-    </StepperContextProvider>
+    </StepperContext.Provider>
   );
 });
 

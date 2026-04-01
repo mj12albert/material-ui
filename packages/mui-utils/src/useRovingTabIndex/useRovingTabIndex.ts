@@ -10,56 +10,182 @@ import useEventCallback from '../useEventCallback';
 import useForkRef from '../useForkRef';
 import { useRovingTabIndexContext } from './RovingTabIndexContext';
 
-// The normalized record stored in the root registry after an item attaches to a DOM element.
 export interface Item<Key = unknown> {
+  /**
+   * The logical id used to track the item across reorders and re-renders.
+   * Components such as `Tabs` use the tab value here, while `MenuItem` generates an internal id.
+   */
   id: Key;
+  /**
+   * The item's current DOM element.
+   */
   element: HTMLElement | null;
+  /**
+   * Whether the item ignores user interaction.
+   */
   disabled: boolean;
+  /**
+   * Whether a disabled item should still be allowed to receive roving focus.
+   * `MenuList` uses this for its `disabledItemsFocusable` behavior.
+   */
   focusableWhenDisabled: boolean;
+  /**
+   * An optional text string used for typeahead matching.
+   */
   textValue?: string | undefined;
+  /**
+   * Whether the item is currently selected in the consumer component's own state model.
+   * `MenuList` uses this when `variant="selectedMenu"` to prefer the selected item by default,
+   * and `Tabs` sets this on the selected tab.
+   */
   selected: boolean;
 }
 
 export interface UseRovingTabIndexParams<Key = unknown> {
+  /**
+   * The logical item id that should own `tabIndex=0`.
+   *
+   * Pass a concrete id when the consumer wants to drive roving focus explicitly.
+   * For example, `Tabs` uses the selected tab value here when focus is outside the list so
+   * that keyboard focus re-enters on the selected tab.
+   *
+   * `undefined` means "the hook should choose the active item using its default-item logic".
+   * `null` means "there is intentionally no preferred item", which also falls back to the
+   * default-item logic.
+   */
   activeItemId?: Key | null | undefined;
+  /**
+   * Chooses the default item when `activeItemId` is not driving the tab stop directly.
+   *
+   * `MenuList` uses this to prefer the selected item when `variant="selectedMenu"`, then
+   * falls back to the first focusable item.
+   */
   getDefaultActiveItemId?: ((items: Item<Key>[]) => Key | null) | undefined;
+  /**
+   * The axis used by arrow-key navigation.
+   */
   orientation: 'horizontal' | 'vertical';
+  /**
+   * Whether horizontal keyboard navigation should follow right-to-left semantics.
+   * Only affects horizontal lists.
+   * @default false
+   */
   isRtl?: boolean | undefined;
+  /**
+   * Filters items out of roving navigation without removing them from the registry.
+   * For example, `MenuList` uses this so disabled menu items can stay registered while still
+   * being skipped for roving focus unless `disabledItemsFocusable` is enabled.
+   */
   isItemFocusable?: ((item: Item<Key>) => boolean) | undefined;
+  /**
+   * Whether keyboard navigation should wrap from the last item back to the first, and vice versa.
+   * @default true
+   */
   wrap?: boolean | undefined;
-  shouldWrap?: boolean | undefined;
 }
 
 export interface UseRovingTabIndexReturnValue<Key = unknown> {
+  /**
+   * The item id that currently owns `tabIndex=0` for this render.
+   */
   activeItemId: Key | null;
+  /**
+   * Imperatively focuses the current active item, if it has a DOM element.
+   * Returns the focused item id, or `null` when no active item can be focused.
+   */
   focusActiveItem: () => Key | null;
+  /**
+   * Imperatively moves focus to the next matching item.
+   * Consumers such as `MenuList` use this for typeahead and other non-arrow-key navigation.
+   */
   focusNext: (isItemFocusableOverride?: (item: Item<Key>) => boolean) => Key | null;
+  /**
+   * Returns the current active item record from a fresh registry snapshot.
+   */
   getActiveItem: () => Item<Key> | null;
+  /**
+   * Returns the props that enable roving behavior on the container element.
+   *
+   * Spread these props onto the list or composite root element that should listen for focus
+   * and keyboard events.
+   */
   getContainerProps: (ref?: React.Ref<HTMLElement>) => {
+    /**
+     * Keeps the active item in sync when focus moves onto one of the registered items.
+     */
     onFocus: (event: React.FocusEvent<HTMLElement>) => void;
+    /**
+     * Handles arrow-key, Home, and End navigation for the roving set.
+     */
     onKeyDown: (event: React.KeyboardEvent<HTMLElement>) => void;
+    /**
+     * Merges the consumer ref with the internal container ref used by the hook.
+     */
     ref: (element: HTMLElement | null) => void;
   };
+  /**
+   * Returns the current item registry.
+   * The map is keyed by item id and stores normalized item records.
+   */
   getItemMap: () => Map<Key, Item<Key>>;
+  /**
+   * Reports whether the supplied item id currently owns `tabIndex=0`.
+   */
   isItemActive: (itemId: Key) => boolean;
+  /**
+   * Registers or updates an item in the roving registry.
+   */
   registerItem: (item: Item<Key>) => void;
+  /**
+   * Updates the current active item id.
+   */
   setActiveItemId: (itemId: Key | null) => void;
+  /**
+   * Removes an item from the roving registry.
+   */
   unregisterItem: (itemId: Key) => void;
 }
 
-// The item-side inputs a consumer passes before registration. The root turns these
-// into `Item` records once the item has a live DOM element.
 export interface UseRovingTabIndexItemParams<Key = unknown> {
+  /**
+   * The logical id that will be used as the item's registry key.
+   */
   id: Key;
+  /**
+   * The consumer's ref for the item's DOM element.
+   * The item hook merges this with its own registration ref callback.
+   */
   ref?: React.Ref<HTMLElement> | undefined;
+  /**
+   * Whether the item ignores user interaction.
+   * @default false
+   */
   disabled?: boolean | undefined;
+  /**
+   * Whether the item should still be focusable even when `disabled` is true.
+   * @default false
+   */
   focusableWhenDisabled?: boolean | undefined;
+  /**
+   * An optional text string used for typeahead matching.
+   */
   textValue?: string | undefined;
+  /**
+   * Whether the item is selected in the consumer component's state model.
+   * @default false
+   */
   selected?: boolean | undefined;
 }
 
 export interface UseRovingTabIndexItemReturnValue {
+  /**
+   * The merged ref callback that registers the item element with the root registry.
+   */
   ref: React.RefCallback<HTMLElement | null>;
+  /**
+   * The `tabIndex` that should be applied to the item element.
+   * The active item receives `0`; every other item receives `-1`.
+   */
   tabIndex: number;
 }
 
@@ -70,33 +196,20 @@ const SUPPORTED_KEYS = ['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', 'Home
  * This is useful for implementing keyboard navigation in components like menus, tabs, and lists.
  * The hook manages the focus state of child elements and provides props to be spread on both the container and the items.
  * The container will handle keyboard events to move focus between items based on the specified orientation and wrapping behavior.
- *
- * @param params Configuration for the roving set.
- * `activeItemId` synchronizes the active item when its value changes.
- * `getDefaultActiveItemId` picks the fallback active item when there is no requested item.
- * `isItemFocusable` filters registered items out of keyboard navigation without removing them from the map.
- * @returns An object containing:
- * - `activeItemId`: the resolved active item id for the current render.
- * - `focusActiveItem`: an imperative helper that focuses the current active item.
- * - `focusNext`: an imperative helper that moves focus to the next matching item.
- * - `getActiveItem`: a getter for the current active item record.
- * - `getContainerProps`: container props that enable roving keyboard handling.
- * - `getItemMap`: a getter for the registered item map.
- * - `isItemActive`: a predicate that reports whether an item id currently owns the tab stop.
- * - `registerItem`: registers or updates an item in the roving set.
- * - `setActiveItemId`: updates the current active item id.
- * - `unregisterItem`: removes an item from the roving set.
  */
 export function useRovingTabIndexRoot<Key = unknown>(
   params: UseRovingTabIndexParams<Key>,
 ): UseRovingTabIndexReturnValue<Key> {
+  const legacyParams = params as UseRovingTabIndexParams<Key> & {
+    shouldWrap?: boolean | undefined;
+  };
   const {
     activeItemId: activeItemIdProp,
     getDefaultActiveItemId,
     orientation,
     isRtl = false,
   } = params;
-  const wrap = params.wrap ?? params.shouldWrap ?? true;
+  const wrap = params.wrap ?? legacyParams.shouldWrap ?? true;
   const itemFilter: (item: Item<Key>) => boolean = params.isItemFocusable ?? isItemFocusable;
 
   const [activeItemIdState, setActiveItemIdState] = React.useState<Key | null | undefined>(
@@ -119,7 +232,6 @@ export function useRovingTabIndexRoot<Key = unknown>(
 
   // based on https://github.com/mui/base-ui/blob/7392a928fca91fcc68b9fad3439ac61e10f3f7ba/packages/react/src/composite/list/CompositeList.tsx#L25-L35
   const itemMapRef = React.useRef<Map<Key, Item<Key>>>(new Map());
-  // `mapTick` is a trigger used to invalidate the memo, forcing a re-render when the map changes
   const [mapTick, setMapTick] = React.useState(0);
   const orderedItems = React.useMemo(() => {
     void mapTick;
@@ -177,6 +289,9 @@ export function useRovingTabIndexRoot<Key = unknown>(
     return activeItemIdRef.current === itemId;
   }, []);
 
+  // Moves focus relative to a starting index. This is the directional helper used by
+  // keyboard navigation and `focusNext()`, unlike `focusActiveItem()` below which simply
+  // focuses whichever item already owns the current tab stop.
   const focusItem = React.useCallback(
     (
       currentIndex: number,
@@ -205,6 +320,9 @@ export function useRovingTabIndexRoot<Key = unknown>(
     [itemFilter],
   );
 
+  // Focuses the item that already owns `tabIndex=0`. Consumers use this when they have
+  // already decided which item should be active and just need DOM focus to enter that item,
+  // such as `MenuList` when a menu opens.
   const focusActiveItem = React.useCallback(() => {
     const activeItem = getActiveItem();
 
@@ -423,6 +541,13 @@ export function useRovingTabIndexItem<Key = unknown>(
 /**
  * Resolves which item id should own the roving tab stop for the current render.
  *
+ * This is the top-level decision point for "who gets `tabIndex=0` right now?".
+ * For example:
+ * - `Tabs` sometimes passes `selectedValue` as `activeItemId` so the selected tab becomes
+ *   the tab stop when focus enters the list from outside.
+ * - `MenuList` leaves `activeItemId` undefined and relies on the default-item logic below
+ *   so that menu-specific rules decide which menu item should initially own the tab stop.
+ *
  * @param activeItemId The item id supplied through the root hook's `activeItemId` option.
  *   `undefined` means "the caller did not ask for a specific item, use the default-item
  *   logic instead". `null` means "there is intentionally no preferred item, so also fall
@@ -483,8 +608,15 @@ function resolveRequestedItemId<Key>(
  * `activeItemId`.
  *
  * This path is used on the initial render and whenever the caller leaves the choice of tab
- * stop to the hook. `getDefaultActiveItemId` lets a component prefer a specific logical item,
- * such as the selected menu item, before falling back to the first focusable item.
+ * stop to the hook. `getDefaultActiveItemId` lets a component prefer a specific logical item
+ * before falling back to the first focusable item.
+ *
+ * For example:
+ * - `MenuList` uses this path all the time. When `variant="selectedMenu"`, it prefers the
+ *   selected menu item; otherwise it prefers the first focusable menu item.
+ * - `Tabs` uses this path while focus is already inside the tab list, because at that point
+ *   the current roving position should be driven by actual focus movement rather than by the
+ *   selected tab value.
  *
  * @param items The ordered registered items currently in the roving set.
  * @param isFocusable A predicate that decides whether an item may receive roving focus.

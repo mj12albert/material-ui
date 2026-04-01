@@ -1,6 +1,5 @@
 export {
   RovingTabIndexContext,
-  RovingTabIndexProvider,
   useRovingTabIndexContext,
   useRovingTabIndexItem,
   useRovingTabIndexRoot,

@@ -286,6 +286,8 @@ The `autoFocus` prop in `MenuList` does not set `tabindex="0"` on the `List` com
 
 `MenuItem`s will throw an error when rendered outside of `Menu` or `MenuList`.
 
+Keyboard navigation now supports `MenuItem`s inside `React.Fragment`.
+
 Custom non-interactive menu content such as `ListSubheader` or `Divider` no longer need to set `muiSkipListHighlight` to opt-out of the menu's focus management.
 
 Custom children that set `role="menuitem"` but do not wrap the `MenuItem` component are no longer supported inside `Menu` or `MenuList`.

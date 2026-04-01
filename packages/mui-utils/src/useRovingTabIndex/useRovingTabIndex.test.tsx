@@ -58,24 +58,13 @@ function TestComponent(
   props: Partial<UseRovingTabIndexParams<string>> & {
     items?: TestItem[];
     buttonRef?: React.Ref<HTMLButtonElement>;
-    shouldWrap?: boolean;
   },
 ) {
-  const {
-    items = defaultItems,
-    buttonRef,
-    orientation = 'horizontal',
-    shouldWrap,
-    ...options
-  } = props;
-  const rootParams: UseRovingTabIndexParams<string> & { shouldWrap?: boolean } = {
+  const { items = defaultItems, buttonRef, orientation = 'horizontal', ...options } = props;
+  const rootParams: UseRovingTabIndexParams<string> = {
     ...(options as Omit<UseRovingTabIndexParams<string>, 'orientation'>),
     orientation,
   };
-
-  if (shouldWrap !== undefined) {
-    rootParams.shouldWrap = shouldWrap;
-  }
 
   const root = useRovingTabIndexRoot(rootParams);
 
@@ -293,15 +282,6 @@ describe('useRovingTabIndexRoot + useRovingTabIndexItem', () => {
 
   test('does not wrap when wrap is false', async () => {
     const { user } = render(<TestComponent wrap={false} />);
-
-    await user.click(screen.getByTestId('button-4'));
-    await user.keyboard('{ArrowRight}');
-
-    expect(screen.getByTestId('button-4')).toHaveFocus();
-  });
-
-  test('supports shouldWrap as a compatibility alias', async () => {
-    const { user } = render(<TestComponent shouldWrap={false} />);
 
     await user.click(screen.getByTestId('button-4'));
     await user.keyboard('{ArrowRight}');

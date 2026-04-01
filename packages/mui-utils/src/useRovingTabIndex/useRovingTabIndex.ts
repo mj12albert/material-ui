@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 
+import fastObjectShallowCompare from '../fastObjectShallowCompare';
 import ownerDocument from '../ownerDocument';
 import getActiveElement from '../getActiveElement';
 import setRef from '../setRef';
@@ -200,17 +201,14 @@ const SUPPORTED_KEYS = ['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', 'Home
 export function useRovingTabIndexRoot<Key = unknown>(
   params: UseRovingTabIndexParams<Key>,
 ): UseRovingTabIndexReturnValue<Key> {
-  const legacyParams = params as UseRovingTabIndexParams<Key> & {
-    shouldWrap?: boolean | undefined;
-  };
   const {
     activeItemId: activeItemIdProp,
     getDefaultActiveItemId,
     orientation,
     isRtl = false,
+    isItemFocusable: itemFilter = isItemFocusable,
+    wrap = true,
   } = params;
-  const wrap = params.wrap ?? legacyParams.shouldWrap ?? true;
-  const itemFilter: (item: Item<Key>) => boolean = params.isItemFocusable ?? isItemFocusable;
 
   const [activeItemIdState, setActiveItemIdState] = React.useState<Key | null | undefined>(
     activeItemIdProp,
@@ -267,7 +265,7 @@ export function useRovingTabIndexRoot<Key = unknown>(
   const registerItem = useEventCallback((item: Item<Key>) => {
     const previousItem = itemMapRef.current.get(item.id);
 
-    if (areItemsEquivalent(previousItem, item)) {
+    if (fastObjectShallowCompare(previousItem ?? null, item)) {
       return;
     }
 
@@ -296,7 +294,8 @@ export function useRovingTabIndexRoot<Key = unknown>(
     (
       currentIndex: number,
       direction: 'next' | 'previous',
-      wrapNavigation: boolean,
+      // eslint-disable-next-line @typescript-eslint/no-shadow
+      wrap: boolean,
       isItemFocusableOverride?: (item: Item<Key>) => boolean,
     ) => {
       const snapshot = getNavigableItemsSnapshot(itemMapRef.current);
@@ -304,7 +303,7 @@ export function useRovingTabIndexRoot<Key = unknown>(
         snapshot,
         currentIndex,
         direction,
-        wrapNavigation,
+        wrap,
         isItemFocusableOverride ?? itemFilter,
       );
 
@@ -380,6 +379,7 @@ export function useRovingTabIndexRoot<Key = unknown>(
             event.preventDefault();
 
             if (isFocusOnContainer) {
+              // Set to length, so that the previous focused element will be the last one.
               currentIndex = snapshot.length;
             }
             break;
@@ -765,21 +765,6 @@ function getNavigableItemsSnapshot<Key>(itemMap: Map<Key, Item<Key>>) {
   return getOrderedItems(itemMap).filter(isConnectedItem);
 }
 
-function areItemsEquivalent<Key>(previousItem: Item<Key> | undefined, nextItem: Item<Key>) {
-  if (!previousItem) {
-    return false;
-  }
-
-  return (
-    previousItem.id === nextItem.id &&
-    previousItem.element === nextItem.element &&
-    previousItem.disabled === nextItem.disabled &&
-    previousItem.focusableWhenDisabled === nextItem.focusableWhenDisabled &&
-    previousItem.selected === nextItem.selected &&
-    previousItem.textValue === nextItem.textValue
-  );
-}
-
 function getNextIndex(
   currentIndex: number,
   lastIndex: number,
@@ -813,7 +798,8 @@ export function isItemFocusable(item: Item<unknown>) {
   return (
     !item.disabled &&
     !item.element.hasAttribute('disabled') &&
-    item.element.getAttribute('aria-disabled') !== 'true'
+    item.element.getAttribute('aria-disabled') !== 'true' &&
+    item.element.hasAttribute('tabindex')
   );
 }
 

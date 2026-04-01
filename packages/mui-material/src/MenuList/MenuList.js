@@ -63,25 +63,23 @@ function isItemFocusableWithTextCriteria(item, criteria) {
 }
 
 // Menu auto-focus is not always keyboard-driven. On open we often move focus to the
-// active item programmatically so arrow-key navigation starts from the right place,
-// but in `variant="menu"` the selected item is still the intended visual highlight.
+// active item programmatically so arrow-key navigation starts from the right place.
 //
-// If we mark that programmatic focus as focus-visible when there is no known keyboard
-// focus source, the first item can incorrectly pick up `Mui-focusVisible` and visually
-// compete with the selected item. Preserve focus-visible only when the caller gave us
-// an explicit focus source (for example Select forwarding keyboard intent); otherwise
-// focus the item without requesting focus-visible styling.
-function focusInitialItem(element, focusSource) {
-  if (focusSource != null) {
-    focusWithVisible(element, focusSource);
+// Most menus should preserve the normal focus-visible behavior for that initial focus
+// target. The exception is `variant="menu"` when a different item is selected: in that
+// case the focused first item can visually compete with the selected item. For that
+// specific case we suppress focus-visible when there is no explicit focus source.
+function focusInitialItem(element, focusSource, shouldSuppressFocusVisible = false) {
+  if (shouldSuppressFocusVisible && focusSource == null) {
+    try {
+      element.focus({ focusVisible: false });
+    } catch (error) {
+      element.focus();
+    }
     return;
   }
 
-  try {
-    element.focus({ focusVisible: false });
-  } catch (error) {
-    element.focus();
-  }
+  focusWithVisible(element, focusSource);
 }
 
 /**
@@ -136,7 +134,7 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
     orientation: 'vertical',
     wrap: !disableListWrap,
   });
-  const { activeItemId, focusNext, getActiveItem, getContainerProps } = rovingContainer;
+  const { activeItemId, focusNext, getActiveItem, getContainerProps, getItemMap } = rovingContainer;
 
   const focusInitialTarget = useEventCallback((force = false) => {
     // `force` is used by the imperative action when `Menu` asks `MenuList` to restore its
@@ -150,7 +148,11 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
       const activeItem = getActiveItem();
 
       if (activeItem?.element) {
-        focusInitialItem(activeItem.element, focusSource);
+        const hasSelectedItem = Array.from(getItemMap().values()).some((item) => item.selected);
+        const shouldSuppressInitialFocusVisible =
+          variant === 'menu' && hasSelectedItem && !activeItem.selected;
+
+        focusInitialItem(activeItem.element, focusSource, shouldSuppressInitialFocusVisible);
         hasFocusedInitialTargetRef.current = true;
         return activeItem.element;
       }

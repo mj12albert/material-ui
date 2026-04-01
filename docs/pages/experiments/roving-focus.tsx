@@ -1,4 +1,5 @@
 import * as React from 'react';
+import NextLink, { LinkProps as NextLinkProps } from 'next/link';
 import useEventCallback from '@mui/utils/useEventCallback';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -11,6 +12,21 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Head from 'docs/src/modules/components/Head';
 import { Link } from '@mui/docs/Link';
+
+interface MenuItemNextLinkProps
+  extends
+    Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'href'>,
+    Omit<NextLinkProps, 'href' | 'as' | 'passHref' | 'onMouseEnter' | 'onClick' | 'onTouchStart'> {
+  href: NextLinkProps['href'];
+}
+
+const MenuItemNextLink = React.forwardRef<HTMLAnchorElement, MenuItemNextLinkProps>(
+  function MenuItemNextLink(props, ref) {
+    const { href, ...other } = props;
+
+    return <NextLink href={href} ref={ref} {...other} />;
+  },
+);
 
 const MenuDivider = React.forwardRef<HTMLHRElement, React.ComponentPropsWithoutRef<typeof Divider>>(
   function MenuDivider(props, ref) {
@@ -49,6 +65,59 @@ function ExampleFrame(props: ExampleFrameProps) {
         {children}
       </Stack>
     </Paper>
+  );
+}
+
+function LinkMenuExample() {
+  const [open, setOpen] = React.useState(false);
+  const buttonRef = React.useRef<HTMLButtonElement | null>(null);
+  const handleClose = useEventCallback(() => {
+    setOpen(false);
+  });
+
+  return (
+    <ExampleFrame
+      eyebrow="Links"
+      title="MenuItems rendered as links"
+      description="This menu keeps the list semantics by wrapping link-rendered MenuItems in list items."
+      instructions="Open the menu and use the arrow keys. The plain anchor items and the Next.js-style link items should all participate in the same focus order."
+    >
+      <Button ref={buttonRef} variant="contained" onClick={() => setOpen(true)}>
+        Open link menu
+      </Button>
+      <Menu anchorEl={buttonRef.current} open={open} onClose={() => setOpen(false)}>
+        <li role="none">
+          <MenuItem component="a" href="#plain-anchor-target" onClick={handleClose}>
+            Plain same-page anchor
+          </MenuItem>
+        </li>
+        <li role="none">
+          <MenuItem
+            component="a"
+            href="https://mui.com/material-ui/react-menu/"
+            target="_blank"
+            rel="noreferrer"
+            onClick={handleClose}
+          >
+            Plain external anchor
+          </MenuItem>
+        </li>
+        <li role="none">
+          <MenuItem component={MenuItemNextLink} href="#nextjs-anchor-target" onClick={handleClose}>
+            Next.js same-page anchor
+          </MenuItem>
+        </li>
+        <li role="none">
+          <MenuItem
+            component={MenuItemNextLink}
+            href="/material-ui/react-menu/"
+            onClick={handleClose}
+          >
+            Next.js internal link
+          </MenuItem>
+        </li>
+      </Menu>
+    </ExampleFrame>
   );
 }
 
@@ -201,8 +270,8 @@ export default function RovingFocusExperiment() {
               </Typography>
               <Typography variant="body1" color="text.secondary">
                 These demos focus on the cases that were brittle before the refactor: MenuItems
-                inside fragments, wrapped dividers, and conditional child trees that reorder after
-                the menu has already resolved its active item.
+                rendered as links, MenuItems inside fragments, wrapped dividers, and conditional
+                child trees that reorder after the menu has already resolved its active item.
               </Typography>
               <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                 <Button component={Link} href="/experiments" noLinkStyle variant="outlined">
@@ -218,9 +287,22 @@ export default function RovingFocusExperiment() {
                 </Button>
               </Box>
             </Stack>
+            <LinkMenuExample />
             <FragmentAndDividerExample />
             <ConditionalInsertExample />
             <ReorderingExample />
+            <Stack component="section" spacing={2} sx={{ pt: 2 }}>
+              <Typography id="plain-anchor-target" variant="h6" sx={{ scrollMarginTop: 96 }}>
+                Plain anchor target
+              </Typography>
+              <Typography
+                id="nextjs-anchor-target"
+                variant="h6"
+                sx={{ scrollMarginTop: 96, pt: 6 }}
+              >
+                Next.js anchor target
+              </Typography>
+            </Stack>
           </Stack>
         </Container>
       </Box>

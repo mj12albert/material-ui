@@ -929,6 +929,30 @@ describe('<Select />', () => {
 
       expect(backdrop.style).to.have.property('backgroundColor', 'red');
     });
+
+    // https://github.com/mui/material-ui/issues/34218
+    it('supports keyboard navigation after mouse opening when disablePortal is true', async function test() {
+      clock.restore();
+
+      const { user } = render(
+        <Select value="" MenuProps={{ disablePortal: true, transitionDuration: 0 }}>
+          <MenuItem value={10}>Ten</MenuItem>
+          <MenuItem value={20}>Twenty</MenuItem>
+          <MenuItem value={30}>Thirty</MenuItem>
+        </Select>,
+      );
+
+      await user.click(screen.getByRole('combobox'));
+
+      const options = screen.getAllByRole('option', { hidden: true });
+      expect(options[0]).toHaveFocus();
+
+      await user.keyboard('{ArrowDown}');
+      expect(options[1]).toHaveFocus();
+
+      await user.keyboard('{ArrowUp}');
+      expect(options[0]).toHaveFocus();
+    });
   });
 
   describe('prop: SelectDisplayProps', () => {

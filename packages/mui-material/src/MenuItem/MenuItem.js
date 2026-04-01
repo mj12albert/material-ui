@@ -192,6 +192,10 @@ const MenuItem = React.forwardRef(function MenuItem(inProps, ref) {
   );
   const menuListContext = useMenuListContext();
   const rovingItemId = useId();
+  // Escape hatch via ButtonBase for when an anchored <Menu> is opened with a pointer
+  // interaction on a trigger, the item should receive DOM focus but without focus visible
+  // styling. Current API does not allow a reliable `openInteractionType` for anchored menus.
+  const suppressFocusVisible = menuListContext.suppressInitialFocusVisible;
   const itemsFocusableWhenDisabled = menuListContext.itemsFocusableWhenDisabled;
 
   const menuItemRef = React.useRef(null);
@@ -247,6 +251,7 @@ const MenuItem = React.forwardRef(function MenuItem(inProps, ref) {
         component={component}
         internalNativeButton={false}
         focusableWhenDisabled={itemsFocusableWhenDisabled}
+        suppressFocusVisible={suppressFocusVisible}
         focusVisibleClassName={clsx(classes.focusVisible, focusVisibleClassName)}
         className={clsx(classes.root, className)}
         {...other}

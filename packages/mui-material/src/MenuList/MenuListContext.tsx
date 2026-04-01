@@ -8,6 +8,7 @@ import * as React from 'react';
 
 export interface MenuListContextValue {
   itemsFocusableWhenDisabled: boolean;
+  suppressInitialFocusVisible: boolean;
   variant: 'menu' | 'selectedMenu';
 }
 

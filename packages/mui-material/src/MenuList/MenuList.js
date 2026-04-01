@@ -64,21 +64,7 @@ function isItemFocusableWithTextCriteria(item, criteria) {
 
 // Menu auto-focus is not always keyboard-driven. On open we often move focus to the
 // active item programmatically so arrow-key navigation starts from the right place.
-//
-// Most menus should preserve the normal focus-visible behavior for that initial focus
-// target. The exception is `variant="menu"` when a different item is selected: in that
-// case the focused first item can visually compete with the selected item. For that
-// specific case we suppress focus-visible when there is no explicit focus source.
-function focusInitialItem(element, focusSource, shouldSuppressFocusVisible = false) {
-  if (shouldSuppressFocusVisible && focusSource == null) {
-    try {
-      element.focus({ focusVisible: false });
-    } catch (error) {
-      element.focus();
-    }
-    return;
-  }
-
+function focusInitialItem(element, focusSource) {
   focusWithVisible(element, focusSource);
 }
 
@@ -105,6 +91,13 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
   } = props;
   const listRef = React.useRef(null);
   const hasFocusedInitialTargetRef = React.useRef(false);
+  // Escape hatch for <Menu variant="menu"> (items have no selection state). When opened with
+  // mouse/pointer, the initial focused item should still receive DOM focus, but ButtonBase
+  // should suppress its focus-visible state for that one initial handoff.
+  const [suppressInitialFocusVisible, setSuppressInitialFocusVisible] = React.useState(false);
+  // Current anchored <Menu>s cannot receive a `openInteractionType` signal from a trigger
+  // the API only receives `open` and `anchorEl`. When <MenuList> is used in <Select>, the
+  // internal <SelectInput> is able to achieve this via `useSelectFocusSource`.
   const focusSource = useSelectFocusSource();
   const textCriteriaRef = React.useRef({
     keys: [],
@@ -150,9 +143,10 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
       if (activeItem?.element) {
         const hasSelectedItem = Array.from(getItemMap().values()).some((item) => item.selected);
         const shouldSuppressInitialFocusVisible =
-          variant === 'menu' && hasSelectedItem && !activeItem.selected;
+          variant === 'menu' && hasSelectedItem && !activeItem.selected && focusSource == null;
 
-        focusInitialItem(activeItem.element, focusSource, shouldSuppressInitialFocusVisible);
+        setSuppressInitialFocusVisible(shouldSuppressInitialFocusVisible);
+        focusInitialItem(activeItem.element, focusSource);
         hasFocusedInitialTargetRef.current = true;
         return activeItem.element;
       }
@@ -163,14 +157,17 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
 
       // Keep the list container focusable while waiting for items to register,
       // or when there is no focusable item to move to.
+      setSuppressInitialFocusVisible(false);
       listRef.current.focus();
       return listRef.current;
     }
 
     if (!autoFocusList) {
+      setSuppressInitialFocusVisible(false);
       return null;
     }
 
+    setSuppressInitialFocusVisible(false);
     listRef.current.focus();
     hasFocusedInitialTargetRef.current = true;
     return listRef.current;
@@ -179,6 +176,7 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
   useEnhancedEffect(() => {
     if (!autoFocusList && !autoFocusActiveItem) {
       hasFocusedInitialTargetRef.current = false;
+      setSuppressInitialFocusVisible(false);
       return undefined;
     }
 
@@ -224,12 +222,17 @@ const MenuList = React.forwardRef(function MenuList(props, ref) {
   const menuListContextValue = React.useMemo(
     () => ({
       itemsFocusableWhenDisabled: disabledItemsFocusable,
+      suppressInitialFocusVisible,
       variant,
     }),
-    [disabledItemsFocusable, variant],
+    [disabledItemsFocusable, suppressInitialFocusVisible, variant],
   );
 
   const handleKeyDown = useEventCallback((event) => {
+    if (suppressInitialFocusVisible) {
+      setSuppressInitialFocusVisible(false);
+    }
+
     const isModifierKeyPressed = event.ctrlKey || event.metaKey || event.altKey;
 
     if (isModifierKeyPressed && onKeyDown) {

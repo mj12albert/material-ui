@@ -1,10 +1,8 @@
 'use client';
-
 import * as React from 'react';
-
 import fastObjectShallowCompare from '../fastObjectShallowCompare';
-import ownerDocument from '../ownerDocument';
 import getActiveElement from '../getActiveElement';
+import ownerDocument from '../ownerDocument';
 import setRef from '../setRef';
 import useEnhancedEffect from '../useEnhancedEffect';
 import useEventCallback from '../useEventCallback';

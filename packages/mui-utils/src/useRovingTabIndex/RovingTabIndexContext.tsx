@@ -1,7 +1,5 @@
 'use client';
-
 import * as React from 'react';
-
 import type { UseRovingTabIndexReturnValue } from './useRovingTabIndex';
 
 type RovingTabIndexContextValue = UseRovingTabIndexReturnValue<unknown>;

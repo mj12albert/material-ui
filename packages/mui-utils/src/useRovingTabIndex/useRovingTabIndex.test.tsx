@@ -9,7 +9,7 @@ import {
 } from './useRovingTabIndex';
 import { RovingTabIndexContext } from './RovingTabIndexContext';
 
-type TestItem = {
+interface TestItem {
   id: string;
   ariaDisabled?: boolean;
   disabled?: boolean;
@@ -17,7 +17,7 @@ type TestItem = {
   render?: boolean;
   selected?: boolean;
   tabIndex?: number;
-};
+}
 
 let focusNext: ReturnType<typeof useRovingTabIndexRoot<string>>['focusNext'];
 let getItemMap: ReturnType<typeof useRovingTabIndexRoot<string>>['getItemMap'];

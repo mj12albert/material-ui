@@ -3,7 +3,6 @@ import * as React from 'react';
 import PropTypes from 'prop-types';
 import { isItemFocusable } from '@mui/utils/useRovingTabIndex';
 import ownerDocument from '../utils/ownerDocument';
-import List from '../List';
 import getActiveElement from '../utils/getActiveElement';
 import getScrollbarSize from '../utils/getScrollbarSize';
 import focusWithVisible from '../utils/focusWithVisible';
@@ -12,6 +11,7 @@ import useForkRef from '../utils/useForkRef';
 import useEnhancedEffect from '../utils/useEnhancedEffect';
 import { RovingTabIndexContext, useRovingTabIndexRoot } from '../utils/useRovingTabIndex';
 import ownerWindow from '../utils/ownerWindow';
+import List from '../List';
 import { useSelectFocusSource } from '../Select/utils';
 import { MenuListContext } from './MenuListContext';
 

@@ -501,6 +501,8 @@ export function useRovingTabIndexItem<Key = unknown>(
   useEnhancedEffect(() => {
     const itemId = params.id;
 
+    // Keep unmount cleanup separate from the effect above. The effect above re-runs when
+    // item metadata changes, but we only want to unregister on unmount or when the item id changes.
     return () => {
       unregisterItem(itemId);
     };

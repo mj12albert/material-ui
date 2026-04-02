@@ -91,11 +91,6 @@ export interface UseRovingTabIndexReturnValue<Key = unknown> {
    */
   activeItemId: Key | null;
   /**
-   * Imperatively focuses the current active item, if it has a DOM element.
-   * Returns the focused item id, or `null` when no active item can be focused.
-   */
-  focusActiveItem: () => Key | null;
-  /**
    * Imperatively moves focus to the next matching item.
    * Consumers such as `MenuList` use this for typeahead and other non-arrow-key navigation.
    */
@@ -288,8 +283,7 @@ export function useRovingTabIndexRoot<Key = unknown>(
   }, []);
 
   // Moves focus relative to a starting index. This is the directional helper used by
-  // keyboard navigation and `focusNext()`, unlike `focusActiveItem()` below which simply
-  // focuses whichever item already owns the current tab stop.
+  // keyboard navigation and `focusNext()`.
   const focusItem = React.useCallback(
     (
       currentIndex: number,
@@ -318,22 +312,6 @@ export function useRovingTabIndexRoot<Key = unknown>(
     },
     [itemFilter],
   );
-
-  // Focuses the item that already owns `tabIndex=0`. Consumers use this when they have
-  // already decided which item should be active and just need DOM focus to enter that item,
-  // such as `MenuList` when a menu opens.
-  const focusActiveItem = React.useCallback(() => {
-    const activeItem = getActiveItem();
-
-    if (!activeItem?.element) {
-      return null;
-    }
-
-    activeItem.element.focus();
-    setActiveItemIdState(activeItem.id);
-
-    return activeItem.id;
-  }, [getActiveItem]);
 
   const getContainerProps = React.useCallback(
     (ref?: React.Ref<HTMLElement>) => {
@@ -434,7 +412,6 @@ export function useRovingTabIndexRoot<Key = unknown>(
   return React.useMemo(
     () => ({
       activeItemId: resolvedActiveItemId,
-      focusActiveItem,
       focusNext,
       getActiveItem,
       getContainerProps,
@@ -446,7 +423,6 @@ export function useRovingTabIndexRoot<Key = unknown>(
     }),
     [
       resolvedActiveItemId,
-      focusActiveItem,
       focusNext,
       getActiveItem,
       getContainerProps,

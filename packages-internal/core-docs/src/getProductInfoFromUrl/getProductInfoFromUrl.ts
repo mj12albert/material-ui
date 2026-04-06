@@ -11,6 +11,7 @@ export type MuiProductId =
   | 'x-date-pickers'
   | 'x-charts'
   | 'x-tree-view'
+  | 'x-scheduler'
   | 'toolpad-studio'
   | 'toolpad-core';
 

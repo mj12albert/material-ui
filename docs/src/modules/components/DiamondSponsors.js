@@ -2,8 +2,8 @@ import { styled, alpha } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { Link } from '@mui/docs/Link';
-import { useTranslate } from '@mui/docs/i18n';
+import { Link } from '@mui/internal-core-docs/Link';
+import { useTranslate } from '@mui/internal-core-docs/i18n';
 
 const NativeLink = styled('a')(({ theme }) => ({
   boxSizing: 'border-box', // TODO have CssBaseline in the Next.js layout
@@ -17,7 +17,7 @@ const NativeLink = styled('a')(({ theme }) => ({
   borderColor: (theme.vars || theme).palette.divider,
   transition: theme.transitions.create(['background-color']),
   '&:first-of-type': {
-    borderRight: `1px solid ${(theme.vars || theme).palette.divider}`,
+    borderBottom: `1px solid ${(theme.vars || theme).palette.divider}`,
   },
   '&:hover': {
     backgroundColor: (theme.vars || theme).palette.grey[50],
@@ -42,7 +42,7 @@ export default function DiamondSponsors() {
   return (
     <Stack direction="column">
       <Stack
-        direction="row"
+        direction="column"
         sx={(theme) => ({
           borderLeft: '1px solid',
           borderRight: '1px solid',

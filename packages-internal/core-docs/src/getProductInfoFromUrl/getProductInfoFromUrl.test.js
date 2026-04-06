@@ -57,6 +57,13 @@ describe('getProductInfoFromUrl', () => {
     });
   });
 
+  it('should handle MUI X Scheduler', () => {
+    expect(getProductInfoFromUrl('/x/react-scheduler/components')).to.deep.equal({
+      productCategoryId: 'x',
+      productId: 'x-scheduler',
+    });
+  });
+
   it('should handle MUI X', () => {
     expect(getProductInfoFromUrl('/x/migration/migration-data-grid-v5/')).to.deep.equal({
       productCategoryId: 'x',

@@ -147,13 +147,13 @@ function focusThumb(
       if (focusVisible == null) {
         input.focus({ preventScroll: true });
       } else {
-        const focusOptions = {
+        input.focus({
           preventScroll: true,
           // Prevent pointer-driven focus rings in browsers that support this option.
           // Chrome 144+ supports `focusVisible` in `HTMLElement.focus()` options.
+          // @ts-expect-error `focusVisible` is not yet in TypeScript's lib.dom FocusOptions.
           focusVisible,
-        };
-        input.focus(focusOptions);
+        });
       }
     }
   }
@@ -254,7 +254,10 @@ export function useSlider(parameters: UseSliderParameters): UseSliderReturnValue
       // https://github.com/mui/material-ui/issues/13485#issuecomment-676048492
       // Clone the event to not override `target` of the original event.
       const nativeEvent = 'nativeEvent' in event ? event.nativeEvent : event;
-      const clonedEvent = new Event(nativeEvent.type, nativeEvent);
+      const clonedEvent = new (nativeEvent.constructor as typeof Event)(
+        nativeEvent.type,
+        nativeEvent as EventInit,
+      );
 
       Object.defineProperty(clonedEvent, 'target', {
         writable: true,

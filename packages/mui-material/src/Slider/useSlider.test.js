@@ -7,6 +7,19 @@ import { useSlider } from './useSlider';
 describe('useSlider', () => {
   const { render } = createRenderer();
 
+  beforeEach(() => {
+    // jsdom doesn't implement Pointer Capture API
+    if (!Element.prototype.setPointerCapture) {
+      Element.prototype.setPointerCapture = stub();
+    }
+    if (!Element.prototype.releasePointerCapture) {
+      Element.prototype.releasePointerCapture = stub();
+    }
+    if (!Element.prototype.hasPointerCapture) {
+      Element.prototype.hasPointerCapture = stub().returns(false);
+    }
+  });
+
   describe('getRootProps', () => {
     it('forwards external props including event handlers', () => {
       const rootRef = React.createRef();
@@ -38,19 +51,6 @@ describe('useSlider', () => {
       fireEvent.click(slider);
       expect(handleClick.callCount).to.equal(1);
     });
-  });
-
-  beforeEach(() => {
-    // jsdom doesn't implement Pointer Capture API
-    if (!Element.prototype.setPointerCapture) {
-      Element.prototype.setPointerCapture = stub();
-    }
-    if (!Element.prototype.releasePointerCapture) {
-      Element.prototype.releasePointerCapture = stub();
-    }
-    if (!Element.prototype.hasPointerCapture) {
-      Element.prototype.hasPointerCapture = stub().returns(false);
-    }
   });
 
   describe('getThumbStyle', () => {

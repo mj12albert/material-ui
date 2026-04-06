@@ -156,6 +156,21 @@ function useAutocomplete(props) {
   const defaultHighlighted = autoHighlight ? 0 : -1;
   const highlightedIndexRef = React.useRef(defaultHighlighted);
 
+  // Tracks how the current highlight was set:
+  // - 'keyboard' — arrow keys, Home/End, PageUp/PageDown
+  // - 'mouse'    — handleOptionMouseMove
+  // - 'touch'    — handleOptionTouchStart
+  // - null       — programmatic (autoHighlight, value sync)
+  //
+  // This lets handleBlur and the Enter handler distinguish intentional
+  // interactions from incidental ones — e.g. autoSelect should not commit
+  // a highlight that came from a casual mouse hover.
+  /** @type {React.MutableRefObject<AutocompleteHighlightChangeReason | null>} */
+  const highlightReasonRef = React.useRef(null);
+
+  const touchScrolledRef = React.useRef(false);
+  const isTouch = React.useRef(false);
+
   // Calculate the initial inputValue on mount only.
   // useRef ensures it doesn't update dynamically with defaultValue or value props.
   const initialInputValue = React.useRef(
@@ -347,6 +362,7 @@ function useAutocomplete(props) {
 
   const setHighlightedIndex = useEventCallback(({ event, index, reason }) => {
     highlightedIndexRef.current = index;
+    highlightReasonRef.current = reason ?? null;
 
     // does the index exist?
     if (index === -1) {
@@ -425,6 +441,11 @@ function useAutocomplete(props) {
   const changeHighlightedIndex = useEventCallback(({ event, diff, direction = 'next', reason }) => {
     if (!popupOpen) {
       return;
+    }
+
+    if (reason === 'keyboard') {
+      touchScrolledRef.current = false;
+      isTouch.current = false;
     }
 
     const getNextIndex = () => {
@@ -538,6 +559,10 @@ function useAutocomplete(props) {
     // If it exists and the value and the inputValue haven't changed, just update its index, otherwise continue execution
     const previousHighlightedOptionIndex = getPreviousHighlightedOptionIndex();
     if (previousHighlightedOptionIndex !== -1) {
+      // Bypass setHighlightedIndex to preserve the existing highlightReasonRef.
+      // The highlighted option still exists after the filteredOptions array changed
+      // (e.g. async fetch returns new options while the user is mid-navigation),
+      // so the original interaction reason (keyboard, mouse, etc.) still applies.
       highlightedIndexRef.current = previousHighlightedOptionIndex;
       return;
     }
@@ -671,6 +696,7 @@ function useAutocomplete(props) {
 
     setOpenState(true);
     setInputPristine(true);
+    isTouch.current = false;
 
     if (onOpen) {
       onOpen(event);
@@ -683,6 +709,7 @@ function useAutocomplete(props) {
     }
 
     setOpenState(false);
+    touchScrolledRef.current = false;
 
     if (onClose) {
       onClose(event, reason);
@@ -704,8 +731,6 @@ function useAutocomplete(props) {
 
     setValueState(newValue);
   };
-
-  const isTouch = React.useRef(false);
 
   const selectNewValue = (event, option, reasonProp = 'selectOption', origin = 'options') => {
     let reason = reasonProp;
@@ -938,8 +963,24 @@ function useAutocomplete(props) {
             handleFocusItem(event, 'next');
           }
           break;
-        case 'Enter':
-          if (highlightedIndexRef.current !== -1 && popupOpen) {
+        case 'Enter': {
+          // In freeSolo, only select the highlighted option if the user hasn't
+          // typed new text (inputPristine) or explicitly interacted with an option
+          // (keyboard, mouse, or touch — any non-null reason). This lets typed
+          // text win over a programmatic highlight (reason=null, e.g. from
+          // syncHighlightedIndex matching a previous value) while still honoring
+          // deliberate user interactions like hovering a suggestion then pressing Enter.
+          const shouldSelectHighlighted =
+            !freeSolo || inputPristine || highlightReasonRef.current !== null;
+
+          if (
+            highlightedIndexRef.current !== -1 &&
+            popupOpen &&
+            shouldSelectHighlighted &&
+            // After a touch-scroll the highlight is stale (the user scrolled
+            // past it), so skip selection until the next deliberate interaction.
+            !touchScrolledRef.current
+          ) {
             const option = filteredOptions[highlightedIndexRef.current];
             const disabled = getOptionDisabled ? getOptionDisabled(option) : false;
 
@@ -967,6 +1008,7 @@ function useAutocomplete(props) {
             selectNewValue(event, inputValue, 'createOption', 'freeSolo');
           }
           break;
+        }
         case 'Escape':
           if (popupOpen) {
             // Avoid Opera to exit fullscreen mode.
@@ -1062,7 +1104,17 @@ function useAutocomplete(props) {
     firstFocus.current = true;
     ignoreFocus.current = false;
 
-    if (autoSelect && highlightedIndexRef.current !== -1 && popupOpen) {
+    // Auto-select the highlighted option on blur, but only if the highlight
+    // came from keyboard navigation or was set programmatically (autoHighlight).
+    // Mouse hover and touch should not trigger selection — the user may have
+    // moved the pointer over an option without intending to commit to it.
+    if (
+      autoSelect &&
+      highlightedIndexRef.current !== -1 &&
+      popupOpen &&
+      highlightReasonRef.current !== 'mouse' &&
+      highlightReasonRef.current !== 'touch'
+    ) {
       selectNewValue(event, filteredOptions[highlightedIndexRef.current], 'blur');
     } else if (autoSelect && freeSolo && inputValue !== '') {
       selectNewValue(event, inputValue, 'blur', 'freeSolo');
@@ -1075,10 +1127,11 @@ function useAutocomplete(props) {
 
   const handleInputChange = (event) => {
     const newValue = event.target.value;
+    const valueChanged = inputValue !== newValue;
 
-    if (inputValue !== newValue) {
+    if (valueChanged) {
       setInputValueState(newValue);
-      setInputPristine(false);
+      touchScrolledRef.current = false;
 
       if (onInputChange) {
         onInputChange(event, newValue, 'input');
@@ -1094,6 +1147,12 @@ function useAutocomplete(props) {
     } else {
       handleOpen(event);
     }
+
+    // Called after handleOpen so it overrides handleOpen's setInputPristine(true)
+    // when the first keystroke also opens the popup.
+    if (valueChanged) {
+      setInputPristine(false);
+    }
   };
 
   const handleOptionMouseMove = (event) => {
@@ -1104,10 +1163,23 @@ function useAutocomplete(props) {
         index,
         reason: 'mouse',
       });
+    } else {
+      // The option is already highlighted (e.g. programmatically via autoHighlight),
+      // but the user moved the mouse over it — mark as mouse-initiated so
+      // autoSelect on blur correctly treats this as incidental hover.
+      highlightReasonRef.current = 'mouse';
     }
+    // Only clear the touch-scroll flag for genuine mouse interactions.
+    // After a touch gesture, browsers fire compatibility mousemove events
+    // which should not clear the scroll guard.
+    if (!isTouch.current) {
+      touchScrolledRef.current = false;
+    }
+    isTouch.current = false;
   };
 
   const handleOptionTouchStart = (event) => {
+    touchScrolledRef.current = false;
     setHighlightedIndex({
       event,
       index: Number(event.currentTarget.getAttribute('data-option-index')),
@@ -1294,6 +1366,11 @@ function useAutocomplete(props) {
       onMouseDown: (event) => {
         // Prevent blur
         event.preventDefault();
+      },
+      onScroll: () => {
+        if (isTouch.current) {
+          touchScrolledRef.current = true;
+        }
       },
     }),
     getOptionProps: ({ index, option }) => {

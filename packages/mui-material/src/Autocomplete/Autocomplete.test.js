@@ -631,6 +631,110 @@ describe('<Autocomplete />', () => {
       expect(handleChange.callCount).to.equal(1);
       expect(handleChange.args[0][1]).to.equal('a');
     });
+
+    it('should not select a touch-highlighted option on blur', async () => {
+      const handleChange = spy();
+      const options = ['one', 'two', 'three'];
+      const { user } = render(
+        <Autocomplete
+          autoSelect
+          openOnFocus
+          options={options}
+          onChange={handleChange}
+          renderInput={(params) => <TextField {...params} autoFocus />}
+        />,
+      );
+
+      await user.pointer({
+        keys: '[TouchA>]',
+        target: screen.getByRole('option', { name: 'two' }),
+      });
+      await user.tab();
+
+      expect(handleChange.callCount).to.equal(0);
+    });
+
+    it('should not select a mouse-hovered option on blur even if already highlighted', async () => {
+      const handleChange = spy();
+      const options = ['one', 'two', 'three'];
+      const { user } = render(
+        <Autocomplete
+          autoSelect
+          autoHighlight
+          openOnFocus
+          options={options}
+          onChange={handleChange}
+          renderInput={(params) => <TextField {...params} autoFocus />}
+        />,
+      );
+
+      // First option is programmatically highlighted by autoHighlight.
+      // Hovering it should still mark it as mouse-initiated and prevent
+      // autoSelect from committing it on blur.
+      await user.pointer({ target: screen.getByRole('option', { name: 'one' }) });
+      await user.tab();
+
+      expect(handleChange.callCount).to.equal(0);
+    });
+
+    it('should not select a mouse-hovered option on blur', async () => {
+      const handleChange = spy();
+      const options = ['one', 'two', 'three'];
+      const { user } = render(
+        <Autocomplete
+          autoSelect
+          openOnFocus
+          options={options}
+          onChange={handleChange}
+          renderInput={(params) => <TextField {...params} autoFocus />}
+        />,
+      );
+
+      await user.pointer({ target: screen.getByRole('option', { name: 'two' }) });
+      await user.tab();
+
+      expect(handleChange.callCount).to.equal(0);
+    });
+
+    it('should select a keyboard-highlighted option on blur', async () => {
+      const handleChange = spy();
+      const options = ['one', 'two', 'three'];
+      const { user } = render(
+        <Autocomplete
+          autoSelect
+          openOnFocus
+          options={options}
+          onChange={handleChange}
+          renderInput={(params) => <TextField {...params} autoFocus />}
+        />,
+      );
+
+      await user.keyboard('{ArrowDown}');
+      await user.tab();
+
+      expect(handleChange.callCount).to.equal(1);
+      expect(handleChange.args[0][1]).to.equal('one');
+    });
+
+    it('should select the first option on blur when autoHighlight is true', async () => {
+      const handleChange = spy();
+      const options = ['one', 'two', 'three'];
+      const { user } = render(
+        <Autocomplete
+          autoSelect
+          autoHighlight
+          openOnFocus
+          options={options}
+          onChange={handleChange}
+          renderInput={(params) => <TextField {...params} autoFocus />}
+        />,
+      );
+
+      await user.tab();
+
+      expect(handleChange.callCount).to.equal(1);
+      expect(handleChange.args[0][1]).to.equal('one');
+    });
   });
 
   describe('prop: multiple', () => {
@@ -2650,6 +2754,181 @@ describe('<Autocomplete />', () => {
 
       expect(handleChange.callCount).to.equal(1);
       expect(handleChange.args[0][1]).to.equal('あ');
+    });
+
+    it('should prefer typed text over auto-highlighted match on Enter', async () => {
+      const handleChange = spy();
+      const options = ['The Shawshank Redemption', 'The Godfather'];
+      const { user } = render(
+        <Autocomplete
+          freeSolo
+          autoHighlight
+          openOnFocus
+          options={options}
+          onChange={handleChange}
+          renderInput={(params) => <TextField {...params} autoFocus />}
+        />,
+      );
+
+      await user.type(screen.getByRole('combobox'), 'The{Enter}');
+
+      expect(handleChange.callCount).to.equal(1);
+      expect(handleChange.args[0][1]).to.equal('The');
+    });
+
+    it('should prefer typed text after editing a selected value', async () => {
+      const handleChange = spy();
+      const options = ['The Shawshank Redemption', 'The Godfather'];
+      const { user } = render(
+        <Autocomplete
+          freeSolo
+          defaultValue="The Godfather"
+          options={options}
+          onChange={handleChange}
+          renderInput={(params) => <TextField {...params} autoFocus />}
+        />,
+      );
+
+      // Edit the text (still partially matches the selected value's option)
+      // and press Enter — should create free text, not re-select the old value
+      await user.keyboard('{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}{Enter}');
+
+      expect(handleChange.callCount).to.equal(1);
+      expect(handleChange.args[0][1]).to.equal('The Godf');
+    });
+
+    it('should select the highlighted option on Enter after keyboard navigation', async () => {
+      const handleChange = spy();
+      const options = ['The Shawshank Redemption', 'The Godfather'];
+      const { user } = render(
+        <Autocomplete
+          freeSolo
+          options={options}
+          onChange={handleChange}
+          renderInput={(params) => <TextField {...params} autoFocus />}
+        />,
+      );
+
+      await user.type(screen.getByRole('combobox'), 'The');
+      await user.keyboard('{ArrowDown}{Enter}');
+
+      expect(handleChange.callCount).to.equal(1);
+      expect(handleChange.args[0][1]).to.equal('The Shawshank Redemption');
+    });
+
+    it('should select a mouse-hovered option on Enter after typing', async () => {
+      const handleChange = spy();
+      const options = ['The Shawshank Redemption', 'The Godfather'];
+      const { user } = render(
+        <Autocomplete
+          freeSolo
+          options={options}
+          onChange={handleChange}
+          renderInput={(params) => <TextField {...params} autoFocus />}
+        />,
+      );
+
+      await user.type(screen.getByRole('combobox'), 'The');
+      await user.pointer({ target: screen.getByRole('option', { name: 'The Godfather' }) });
+      await user.keyboard('{Enter}');
+
+      expect(handleChange.callCount).to.equal(1);
+      expect(handleChange.args[0][1]).to.equal('The Godfather');
+    });
+
+    it('should not select a touch-highlighted option after scroll on Enter', async () => {
+      const handleChange = spy();
+      const options = ['one', 'two', 'three'];
+      const { user } = render(
+        <Autocomplete
+          open
+          options={options}
+          onChange={handleChange}
+          renderInput={(params) => <TextField {...params} autoFocus />}
+        />,
+      );
+      const optionOne = screen.getByRole('option', { name: 'one' });
+
+      await user.pointer({ keys: '[TouchA>]', target: optionOne });
+      fireEvent.scroll(screen.getByRole('listbox'));
+      await user.keyboard('{Enter}');
+
+      expect(handleChange.callCount).to.equal(0);
+    });
+
+    it('should allow Enter to select after touch-scroll then typing', async () => {
+      const handleChange = spy();
+      const options = ['one', 'two', 'three'];
+      const { user } = render(
+        <Autocomplete
+          autoHighlight
+          openOnFocus
+          options={options}
+          onChange={handleChange}
+          renderInput={(params) => <TextField {...params} autoFocus />}
+        />,
+      );
+
+      // Touch-scroll makes the highlight stale
+      await user.pointer({
+        keys: '[TouchA>]',
+        target: screen.getByRole('option', { name: 'one' }),
+      });
+      fireEvent.scroll(screen.getByRole('listbox'));
+
+      // Typing clears the stale scroll flag; autoHighlight re-highlights
+      await user.type(screen.getByRole('combobox'), 't');
+      await user.keyboard('{Enter}');
+
+      expect(handleChange.callCount).to.equal(1);
+      expect(handleChange.args[0][1]).to.equal('two');
+    });
+
+    it('should select an option on tap without scroll', async () => {
+      const handleChange = spy();
+      const options = ['one', 'two', 'three'];
+      const { user } = render(
+        <Autocomplete
+          open
+          options={options}
+          onChange={handleChange}
+          renderInput={(params) => <TextField {...params} autoFocus />}
+        />,
+      );
+
+      await user.pointer([
+        { keys: '[TouchA]', target: screen.getByRole('option', { name: 'one' }) },
+      ]);
+
+      expect(handleChange.callCount).to.equal(1);
+      expect(handleChange.args[0][1]).to.equal('one');
+    });
+
+    it('should not misclassify scroll as touch after close and reopen', async () => {
+      const handleChange = spy();
+      const options = ['one', 'two', 'three'];
+      const { user } = render(
+        <Autocomplete
+          openOnFocus
+          options={options}
+          onChange={handleChange}
+          renderInput={(params) => <TextField {...params} autoFocus />}
+        />,
+      );
+
+      // Touch an option, then close by pressing Escape
+      await user.pointer({
+        keys: '[TouchA>]',
+        target: screen.getByRole('option', { name: 'one' }),
+      });
+      await user.keyboard('{Escape}');
+
+      // Reopen (first ArrowDown) and navigate (second ArrowDown), then Enter.
+      // The touch state should not leak into this new popup session.
+      await user.keyboard('{ArrowDown}{ArrowDown}{Enter}');
+
+      expect(handleChange.callCount).to.equal(1);
+      expect(handleChange.args[0][1]).to.equal('one');
     });
 
     it('should render endAdornment only when clear icon or popup icon is available', () => {

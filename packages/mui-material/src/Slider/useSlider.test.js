@@ -148,6 +148,36 @@ describe('useSlider', () => {
       expect(sliderState.getThumbStyle(0).zIndex).to.equal(1);
     });
 
+    it.skipIf(isJsdom())(
+      'range slider: overlapping thumbs should reactivate the last-used thumb',
+      () => {
+        let sliderState;
+        const { container } = render(
+          <RangeSliderTest
+            onSliderState={(state) => {
+              sliderState = state;
+            }}
+          />,
+        );
+        stub(container.firstChild, 'getBoundingClientRect').callsFake(() => ({
+          width: 100,
+          height: 10,
+          bottom: 10,
+          left: 0,
+        }));
+
+        fireEvent.pointerDown(container.firstChild, { clientX: 20, pointerId: 1 });
+        fireEvent.pointerMove(document, { clientX: 80, pointerId: 1, buttons: 1 });
+        fireEvent.pointerUp(document, { pointerId: 1 });
+
+        expect(sliderState.values).to.deep.equal([80, 80]);
+        expect(sliderState.getThumbStyle(0).zIndex).to.equal(1);
+
+        fireEvent.pointerDown(container.firstChild, { clientX: 80, pointerId: 2 });
+        expect(sliderState.active).to.equal(0);
+      },
+    );
+
     it.skipIf(isJsdom())('single slider: active thumb should have zIndex 1', () => {
       let sliderState;
       const { container } = render(

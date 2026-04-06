@@ -22,6 +22,8 @@ import areArraysEqual from '../utils/areArraysEqual';
 import getActiveElement from '../utils/getActiveElement';
 
 const INTENTIONAL_DRAG_COUNT_THRESHOLD = 2;
+const EMPTY_MARKS: readonly Mark[] = [];
+const EMPTY_OBJ = {};
 
 function getNewValue(
   currentValue: number,
@@ -37,8 +39,8 @@ function asc(a: number, b: number) {
   return a - b;
 }
 
-function findClosest(values: number[], currentValue: number) {
-  const { index: closestIndex } =
+function findClosest(values: number[], currentValue: number, preferredIndex = -1) {
+  const closestValue =
     values.reduce<{ distance: number; index: number } | null>(
       (acc, value: number, index: number) => {
         const distance = Math.abs(currentValue - value);
@@ -53,7 +55,17 @@ function findClosest(values: number[], currentValue: number) {
         return acc;
       },
       null,
-    ) ?? {};
+    ) ?? (EMPTY_OBJ as { index?: number | undefined });
+  const { index: closestIndex } = closestValue;
+
+  if (closestIndex == null) {
+    return closestIndex;
+  }
+
+  if (preferredIndex >= 0 && values[preferredIndex] === values[closestIndex]) {
+    return preferredIndex;
+  }
+
   return closestIndex;
 }
 
@@ -180,9 +192,6 @@ const axisProps = {
 };
 
 export const Identity = (x: number) => x;
-
-const EMPTY_MARKS: readonly Mark[] = [];
-const EMPTY_OBJ: EventHandlers = {};
 
 export function useSlider(parameters: UseSliderParameters): UseSliderReturnValue {
   const {
@@ -524,7 +533,9 @@ export function useSlider(parameters: UseSliderParameters): UseSliderReturnValue
 
     if (range) {
       const isDragging = previousIndexRef.current !== -1;
-      activeIndex = isDragging ? previousIndexRef.current! : findClosest(values, newValue)!;
+      activeIndex = isDragging
+        ? previousIndexRef.current!
+        : findClosest(values, newValue, lastUsedThumbIndexRef.current)!;
 
       // Bound the new value to the thumb's neighbours.
       if (disableSwap) {
@@ -771,9 +782,9 @@ export function useSlider(parameters: UseSliderParameters): UseSliderReturnValue
   const trackLeap = valueToPercent(values[values.length - 1], min, max) - trackOffset;
 
   const getRootProps = <ExternalProps extends Record<string, unknown> = {}>(
-    externalProps: ExternalProps = {} as ExternalProps,
+    externalProps: ExternalProps = EMPTY_OBJ as ExternalProps,
   ): UseSliderRootSlotProps<ExternalProps> => {
-    const externalHandlers = extractEventHandlers(externalProps) || EMPTY_OBJ;
+    const externalHandlers = extractEventHandlers(externalProps);
 
     const ownEventHandlers = {
       onPointerDown: createHandlePointerDown(externalHandlers),
@@ -807,9 +818,9 @@ export function useSlider(parameters: UseSliderParameters): UseSliderReturnValue
     };
 
   const getThumbProps = <ExternalProps extends Record<string, unknown> = {}>(
-    externalProps: ExternalProps = {} as ExternalProps,
+    externalProps: ExternalProps = EMPTY_OBJ as ExternalProps,
   ): UseSliderThumbSlotProps<ExternalProps> => {
-    const externalHandlers = extractEventHandlers(externalProps) || EMPTY_OBJ;
+    const externalHandlers = extractEventHandlers(externalProps);
 
     const ownEventHandlers = {
       onMouseOver: createHandleMouseOver(externalHandlers),
@@ -848,9 +859,9 @@ export function useSlider(parameters: UseSliderParameters): UseSliderReturnValue
   }
 
   const getHiddenInputProps = <ExternalProps extends Record<string, unknown> = {}>(
-    externalProps: ExternalProps = {} as ExternalProps,
+    externalProps: ExternalProps = EMPTY_OBJ as ExternalProps,
   ): UseSliderHiddenInputProps<ExternalProps> => {
-    const externalHandlers = extractEventHandlers(externalProps) || EMPTY_OBJ;
+    const externalHandlers = extractEventHandlers(externalProps);
 
     const ownEventHandlers = {
       onChange: createHandleHiddenInputChange(externalHandlers),

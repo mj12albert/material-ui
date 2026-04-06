@@ -114,8 +114,7 @@ export interface Mark {
   label?: React.ReactNode;
 }
 
-export type UseSliderRootSlotOwnProps = {
-  onPointerDown: React.PointerEventHandler;
+export type UseSliderRootSlotOwnProps = React.DOMAttributes<Element> & {
   ref: React.RefCallback<Element> | null;
 };
 

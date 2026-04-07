@@ -710,6 +710,7 @@ function useAutocomplete(props) {
 
     setOpenState(false);
     touchScrolledRef.current = false;
+    highlightReasonRef.current = null;
 
     if (onClose) {
       onClose(event, reason);
@@ -1173,13 +1174,15 @@ function useAutocomplete(props) {
       // autoSelect on blur correctly treats this as incidental hover.
       highlightReasonRef.current = 'mouse';
     }
-    // Only clear the touch-scroll flag for genuine mouse interactions.
-    // After a touch gesture, browsers fire compatibility mousemove events
-    // which should not clear the scroll guard.
+    // Don't clear the touch-scroll guard while touch state is still latched.
+    // After a touch gesture, browsers may fire compatibility mousemove
+    // events; if those cleared the guard immediately, later compat events in
+    // the same sequence could be misclassified as a real mouse interaction.
+    // Touch state is cleared by the next deliberate interaction
+    // (keyboard nav, handleOptionClick, or handleOpen).
     if (!isTouch.current) {
       touchScrolledRef.current = false;
     }
-    isTouch.current = false;
   };
 
   const handleOptionTouchStart = (event) => {

@@ -1006,6 +1006,10 @@ function useAutocomplete(props) {
               event.preventDefault();
             }
             selectNewValue(event, inputValue, 'createOption', 'freeSolo');
+          } else if (popupOpen && touchScrolledRef.current) {
+            // The highlight is stale from a touch-scroll — close without selecting.
+            event.preventDefault();
+            handleClose(event, 'escape');
           }
           break;
         }

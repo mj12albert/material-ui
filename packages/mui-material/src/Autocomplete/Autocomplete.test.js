@@ -2838,22 +2838,28 @@ describe('<Autocomplete />', () => {
 
     it('should not select a touch-highlighted option after scroll on Enter', async () => {
       const handleChange = spy();
+      const handleClose = spy();
       const options = ['one', 'two', 'three'];
       const { user } = render(
         <Autocomplete
-          open
+          openOnFocus
           options={options}
           onChange={handleChange}
+          onClose={handleClose}
           renderInput={(params) => <TextField {...params} autoFocus />}
         />,
       );
       const optionOne = screen.getByRole('option', { name: 'one' });
 
-      await user.pointer({ keys: '[TouchA>]', target: optionOne });
+      // user.pointer({ keys: '[TouchA>]' }) fires pointerdown which moves focus
+      // on real devices, touchStart does not move focus
+      // therefore fireEvent is more correct here
+      fireEvent.touchStart(optionOne);
       fireEvent.scroll(screen.getByRole('listbox'));
       await user.keyboard('{Enter}');
 
       expect(handleChange.callCount).to.equal(0);
+      expect(handleClose.callCount).to.equal(1);
     });
 
     it('should allow Enter to select after touch-scroll then typing', async () => {

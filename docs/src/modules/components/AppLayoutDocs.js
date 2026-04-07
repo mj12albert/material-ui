@@ -10,7 +10,7 @@ import {
   AD_HEIGHT,
   AD_HEIGHT_MOBILE,
   AD_MARGIN_BOTTOM,
-} from '@mui/docs/Ad';
+} from '@mui/internal-core-docs/Ad';
 import Head from 'docs/src/modules/components/Head';
 import AppFrame from 'docs/src/modules/components/AppFrame';
 import AppContainer from 'docs/src/modules/components/AppContainer';
@@ -18,7 +18,7 @@ import AppTableOfContents from 'docs/src/modules/components/AppTableOfContents';
 import { TOC_WIDTH } from 'docs/src/modules/components/TableOfContents';
 import AppLayoutDocsFooter from 'docs/src/modules/components/AppLayoutDocsFooter';
 import BackToTop from 'docs/src/modules/components/BackToTop';
-import getProductInfoFromUrl from '@mui/docs/getProductInfoFromUrl';
+import getProductInfoFromUrl from '@mui/internal-core-docs/getProductInfoFromUrl';
 import { convertProductIdToName } from 'docs/src/modules/components/AppSearch';
 
 const Main = styled('main', {
@@ -31,14 +31,6 @@ const Main = styled('main', {
     display: 'flex',
   },
   variants: [
-    {
-      props: ({ disableToc }) => disableToc,
-      style: {
-        [theme.breakpoints.up('lg')]: {
-          marginRight: TOC_WIDTH / 2,
-        },
-      },
-    },
     {
       props: ({ disableToc, wideLayout }) => !disableToc && !wideLayout,
       style: {
@@ -82,7 +74,16 @@ const StyledAppContainer = styled(AppContainer, {
         props: ({ disableToc, wideLayout }) => disableToc && !wideLayout,
         style: {
           // 105ch ≈ 930px
-          maxWidth: `calc(105ch + ${TOC_WIDTH / 2}px)`,
+          maxWidth: '105ch',
+        },
+      },
+      {
+        props: ({ disableToc, wideLayout }) => disableToc && wideLayout,
+        style: {
+          maxWidth: theme.breakpoints.values.xl,
+          '& p, & li': {
+            maxWidth: '105ch',
+          },
         },
       },
       {

@@ -1,9 +1,10 @@
 {
   "name": "@mui/lab",
   "//": "version should be 'alpha' at all time",
-  "version": "9.0.0-beta.0",
+  "version": "9.0.0-beta.1",
   "author": "MUI Team",
   "description": "Laboratory for new Material UI modules.",
+  "license": "MIT",
   "keywords": [
     "react",
     "react-component",
@@ -17,7 +18,6 @@
     "url": "git+https://github.com/mui/material-ui.git",
     "directory": "packages/mui-lab"
   },
-  "license": "MIT",
   "bugs": {
     "url": "https://github.com/mui/material-ui/issues"
   },

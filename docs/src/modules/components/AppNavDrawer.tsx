@@ -20,13 +20,11 @@ import ArrowDropDownRoundedIcon from '@mui/icons-material/ArrowDropDownRounded';
 import DoneRounded from '@mui/icons-material/DoneRounded';
 import LogoWithCopyMenu from 'docs/src/components/action/LogoWithCopyMenu';
 import AppNavDrawerItem from 'docs/src/modules/components/AppNavDrawerItem';
-import { pageToTitleI18n } from '@mui/docs/helpers';
-import PageContext, { ProductVersion } from '@mui/docs/PageContext';
-import { useTranslate } from '@mui/docs/i18n';
+import { pageToTitleI18n } from '@mui/internal-core-docs/helpers';
+import PageContext, { ProductVersion } from '@mui/internal-core-docs/PageContext';
+import { useTranslate } from '@mui/internal-core-docs/i18n';
 import MuiProductSelector from 'docs/src/modules/components/MuiProductSelector';
-import DiamondSponsors from 'docs/src/modules/components/DiamondSponsors';
-import SideNavigationBanner from 'docs/src/components/banner/SideNavigationBanner';
-import { MuiPage } from '@mui/docs/MuiPage';
+import { MuiPage } from '@mui/internal-core-docs/MuiPage';
 
 // TODO: Collapse should expose an API to customize the duration based on the height.
 function transitionTheme(theme: Theme) {
@@ -494,20 +492,6 @@ export default function AppNavDrawer(props: AppNavDrawerProps) {
             <PersistScroll slot="side" enabled>
               {navItems}
             </PersistScroll>
-          </Box>
-          <Box
-            sx={{
-              flexShrink: 0,
-              borderTop: '1px solid',
-              borderColor: 'divider',
-              p: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 1,
-            }}
-          >
-            <DiamondSponsors />
-            <SideNavigationBanner />
           </Box>
         </Box>
       </React.Fragment>

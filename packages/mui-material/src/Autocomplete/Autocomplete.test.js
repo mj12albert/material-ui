@@ -632,6 +632,28 @@ describe('<Autocomplete />', () => {
       expect(handleChange.args[0][1]).to.equal('a');
     });
 
+    it('should prefer typed text over a mouse-hovered option on blur with freeSolo', async () => {
+      const handleChange = spy();
+      const options = ['The Shawshank Redemption', 'The Godfather'];
+      const { user } = render(
+        <Autocomplete
+          autoSelect
+          freeSolo
+          openOnFocus
+          options={options}
+          onChange={handleChange}
+          renderInput={(params) => <TextField {...params} autoFocus />}
+        />,
+      );
+
+      await user.type(screen.getByRole('combobox'), 'The');
+      await user.pointer({ target: screen.getByRole('option', { name: 'The Godfather' }) });
+      await user.tab();
+
+      expect(handleChange.callCount).to.equal(1);
+      expect(handleChange.args[0][1]).to.equal('The');
+    });
+
     it('should not select a touch-highlighted option on blur', async () => {
       const handleChange = spy();
       const options = ['one', 'two', 'three'];

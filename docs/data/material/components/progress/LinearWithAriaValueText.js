@@ -4,24 +4,34 @@ import LinearProgress from '@mui/material/LinearProgress';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 
-function LinearProgressWithLabelAndValue(props) {
+function LinearProgressWithLabelAndValue({ max, min, value, ...rest }) {
+  const progressText = `Elevator at floor ${value} out of ${max}.`;
   const progressId = React.useId();
   return (
     <div>
-      <Typography id={progressId} variant="body2" color="text.secondary">
-        Uploading photos…
+      <Typography
+        id={progressId}
+        variant="body2"
+        color="text.secondary"
+        sx={{ mr: 1 }}
+      >
+        Elevator status
       </Typography>
       <Box sx={{ display: 'flex', alignItems: 'center' }}>
         <Box sx={{ width: '100%', mr: 1 }}>
           <LinearProgress
             variant="determinate"
             aria-labelledby={progressId}
-            {...props}
+            aria-valuetext={progressText}
+            min={min}
+            max={max}
+            value={value}
+            {...rest}
           />
         </Box>
-        <Box sx={{ minWidth: 35 }}>
+        <Box sx={{ whiteSpace: 'nowrap' }}>
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            {`${Math.round(props.value)}%`}
+            {progressText}
           </Typography>
         </Box>
       </Box>
@@ -31,18 +41,28 @@ function LinearProgressWithLabelAndValue(props) {
 
 LinearProgressWithLabelAndValue.propTypes = {
   /**
+   * The maximum value for the progress indicator for the determinate and buffer variants.
+   * @default 100
+   */
+  max: PropTypes.number.isRequired,
+  /**
+   * The minimum value for the progress indicator for the determinate and buffer variants.
+   * @default 0
+   */
+  min: PropTypes.number.isRequired,
+  /**
    * The value of the progress indicator for the determinate and buffer variants.
    * Value between `min` and `max`.
    */
   value: PropTypes.number.isRequired,
 };
 
-export default function LinearWithValueLabel() {
-  const [progress, setProgress] = React.useState(10);
+export default function LinearWithAriaValueText() {
+  const [progress, setProgress] = React.useState(1);
 
   React.useEffect(() => {
     const timer = setInterval(() => {
-      setProgress((prevProgress) => (prevProgress >= 100 ? 10 : prevProgress + 10));
+      setProgress((prevProgress) => (prevProgress >= 10 ? 1 : prevProgress + 1));
     }, 800);
     return () => {
       clearInterval(timer);
@@ -51,7 +71,7 @@ export default function LinearWithValueLabel() {
 
   return (
     <Box sx={{ width: '100%' }}>
-      <LinearProgressWithLabelAndValue value={progress} />
+      <LinearProgressWithLabelAndValue value={progress} min={1} max={10} />
     </Box>
   );
 }

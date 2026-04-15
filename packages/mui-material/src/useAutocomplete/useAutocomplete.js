@@ -1008,8 +1008,10 @@ function useAutocomplete(props) {
             }
             selectNewValue(event, inputValue, 'createOption', 'freeSolo');
           } else if (popupOpen && touchScrolledRef.current) {
-            // The highlight is stale from a touch-scroll — close without selecting.
+            // The highlight is stale from a touch-scroll - close without selecting.
             event.preventDefault();
+            // This happens on Enter, but re-using "escape" as the closest `AutocompleteCloseReason`
+            // to avoid creating a new reason
             handleClose(event, 'escape');
           }
           break;

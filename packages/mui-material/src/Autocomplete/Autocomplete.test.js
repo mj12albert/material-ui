@@ -2819,6 +2819,27 @@ describe('<Autocomplete />', () => {
       expect(handleChange.args[0][1]).to.equal('The Godf');
     });
 
+    it('should create freeSolo text after one edit and Enter', async () => {
+      const handleChange = spy();
+      const options = ['The Shawshank Redemption', 'The Godfather'];
+      const { user } = render(
+        <Autocomplete
+          freeSolo
+          defaultValue="The Godfather"
+          options={options}
+          onChange={handleChange}
+          renderInput={(params) => <TextField {...params} autoFocus />}
+        />,
+      );
+
+      await user.keyboard('{Backspace}');
+      expect(screen.getByRole('option', { name: 'The Godfather' })).not.to.equal(null);
+      await user.keyboard('{Enter}');
+
+      expect(handleChange.callCount).to.equal(1);
+      expect(handleChange.args[0][1]).to.equal('The Godfathe');
+    });
+
     it('should select the highlighted option on Enter after keyboard navigation', async () => {
       const handleChange = spy();
       const options = ['The Shawshank Redemption', 'The Godfather'];

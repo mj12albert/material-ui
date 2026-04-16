@@ -403,7 +403,7 @@ const InputBase = React.forwardRef(function InputBase(inProps, ref) {
         setFocused(true);
       }
     } else if (noElementFocused) {
-      input.focus?.();
+      input.focus();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoFocus]);

@@ -483,10 +483,6 @@ describe('<InputBase />', () => {
       it.skipIf(isJsdom())(
         'should sync focused state when autoFocus is used with SSR (with FormControl)',
         function test() {
-          const consoleErrorSpy = vi
-            .spyOn(console, 'error')
-            .mockName('console.error')
-            .mockImplementation(() => {});
           let input;
 
           try {
@@ -520,7 +516,6 @@ describe('<InputBase />', () => {
                 input.blur();
               });
             }
-            consoleErrorSpy.mockRestore();
           }
         },
       );
@@ -528,10 +523,6 @@ describe('<InputBase />', () => {
       it.skipIf(isJsdom())(
         'should sync focused state when autoFocus is used with SSR (standalone)',
         function test() {
-          const consoleErrorSpy = vi
-            .spyOn(console, 'error')
-            .mockName('console.error')
-            .mockImplementation(() => {});
           let input;
 
           try {
@@ -560,7 +551,6 @@ describe('<InputBase />', () => {
                 input.blur();
               });
             }
-            consoleErrorSpy.mockRestore();
           }
         },
       );
@@ -568,10 +558,6 @@ describe('<InputBase />', () => {
       it.skipIf(isJsdom())(
         'should focus and sync focused state when autoFocus is used with SSR',
         function test() {
-          const consoleErrorSpy = vi
-            .spyOn(console, 'error')
-            .mockName('console.error')
-            .mockImplementation(() => {});
           let input;
 
           try {
@@ -601,7 +587,6 @@ describe('<InputBase />', () => {
                 input.blur();
               });
             }
-            consoleErrorSpy.mockRestore();
           }
         },
       );
@@ -622,10 +607,14 @@ describe('<InputBase />', () => {
           const input = screen.getByRole('textbox');
 
           // Manually focus the element before hydration (without autoFocus)
-          input.focus();
+          act(() => {
+            input.focus();
+          });
           expect(input).to.equal(document.activeElement);
 
-          hydrate();
+          act(() => {
+            hydrate();
+          });
 
           expect(screen.getByTestId('root')).not.to.have.class(classes.focused);
         },

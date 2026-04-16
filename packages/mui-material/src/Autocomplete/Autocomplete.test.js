@@ -718,6 +718,28 @@ describe('<Autocomplete />', () => {
       expect(handleChange.callCount).to.equal(0);
     });
 
+    it('should not select a mouse-hovered option on outside click blur', async () => {
+      const handleChange = spy();
+      const options = ['one', 'two', 'three'];
+      const { user } = render(
+        <React.Fragment>
+          <Autocomplete
+            autoSelect
+            openOnFocus
+            options={options}
+            onChange={handleChange}
+            renderInput={(params) => <TextField {...params} autoFocus />}
+          />
+          <button type="button">Outside</button>
+        </React.Fragment>,
+      );
+
+      await user.pointer({ target: screen.getByRole('option', { name: 'two' }) });
+      await user.click(screen.getByRole('button', { name: 'Outside' }));
+
+      expect(handleChange.callCount).to.equal(0);
+    });
+
     it('should select a keyboard-highlighted option on blur', async () => {
       const handleChange = spy();
       const options = ['one', 'two', 'three'];

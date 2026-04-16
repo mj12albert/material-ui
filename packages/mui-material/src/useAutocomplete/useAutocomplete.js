@@ -165,11 +165,11 @@ function useAutocomplete(props) {
   // This lets handleBlur and the Enter handler distinguish intentional
   // interactions from incidental ones — e.g. autoSelect should not commit
   // a highlight that came from a casual mouse hover.
-  /** @type {React.MutableRefObject<AutocompleteHighlightChangeReason | null>} */
+  /** @type {React.RefObject<AutocompleteHighlightChangeReason | null>} */
   const highlightReasonRef = React.useRef(null);
 
   const touchScrolledRef = React.useRef(false);
-  const isTouch = React.useRef(false);
+  const isTouchRef = React.useRef(false);
 
   // Calculate the initial inputValue on mount only.
   // useRef ensures it doesn't update dynamically with defaultValue or value props.
@@ -445,7 +445,7 @@ function useAutocomplete(props) {
 
     if (reason === 'keyboard') {
       touchScrolledRef.current = false;
-      isTouch.current = false;
+      isTouchRef.current = false;
     }
 
     const getNextIndex = () => {
@@ -696,7 +696,7 @@ function useAutocomplete(props) {
 
     setOpenState(true);
     setInputPristine(true);
-    isTouch.current = false;
+    isTouchRef.current = false;
 
     if (onOpen) {
       onOpen(event);
@@ -772,8 +772,8 @@ function useAutocomplete(props) {
 
     if (
       blurOnSelect === true ||
-      (blurOnSelect === 'touch' && isTouch.current) ||
-      (blurOnSelect === 'mouse' && !isTouch.current)
+      (blurOnSelect === 'touch' && isTouchRef.current) ||
+      (blurOnSelect === 'mouse' && !isTouchRef.current)
     ) {
       inputRef.current.blur();
     }
@@ -1182,7 +1182,7 @@ function useAutocomplete(props) {
     // the same sequence could be misclassified as a real mouse interaction.
     // Touch state is cleared by the next deliberate interaction
     // (keyboard nav, handleOptionClick, or handleOpen).
-    if (!isTouch.current) {
+    if (!isTouchRef.current) {
       touchScrolledRef.current = false;
     }
   };
@@ -1194,14 +1194,14 @@ function useAutocomplete(props) {
       index: Number(event.currentTarget.getAttribute('data-option-index')),
       reason: 'touch',
     });
-    isTouch.current = true;
+    isTouchRef.current = true;
   };
 
   const handleOptionClick = (event) => {
     const index = Number(event.currentTarget.getAttribute('data-option-index'));
     selectNewValue(event, filteredOptions[index], 'selectOption');
 
-    isTouch.current = false;
+    isTouchRef.current = false;
   };
 
   const handleItemDelete = (index) => (event) => {
@@ -1377,7 +1377,7 @@ function useAutocomplete(props) {
         event.preventDefault();
       },
       onScroll: () => {
-        if (isTouch.current) {
+        if (isTouchRef.current) {
           touchScrolledRef.current = true;
         }
       },

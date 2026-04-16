@@ -789,7 +789,7 @@ Autocomplete.propTypes /* remove-proptypes */ = {
    */
   autoHighlight: PropTypes.bool,
   /**
-   * If `true`, the value is updated when the input loses focus, and:
+   * If `true`, the value is updated when the input loses focus under one of these conditions:
    *
    * - An option highlighted via keyboard navigation or `autoHighlight` is selected.
    *   Hover and touch highlights are ignored.

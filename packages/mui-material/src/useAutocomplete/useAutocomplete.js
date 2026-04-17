@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import contains from '@mui/utils/contains';
 import setRef from '@mui/utils/setRef';
 import useEventCallback from '@mui/utils/useEventCallback';
 import useControlled from '@mui/utils/useControlled';
@@ -64,7 +65,7 @@ const defaultFilterOptions = createFilterOptions();
 const pageSize = 5;
 
 const defaultIsActiveElementInListbox = (listboxRef) =>
-  listboxRef.current !== null && listboxRef.current.parentElement?.contains(document.activeElement);
+  listboxRef.current !== null && contains(listboxRef.current.parentElement, document.activeElement);
 
 const defaultIsOptionEqualToValue = (option, value) => option === value;
 
@@ -193,10 +194,12 @@ function useAutocomplete(props) {
 
   const resetInputValue = React.useCallback(
     (event, newValue, reason) => {
-      // retain current `inputValue` if new option isn't selected and `clearOnBlur` is false
-      // When `multiple` is enabled, `newValue` is an array of all selected items including the newly selected item
+      // Retain the current `inputValue` when no new option is selected and `clearOnBlur` is false.
+      // In `multiple` mode, `newValue` is the next value array, so only length growth counts as a selection.
       const isOptionSelected = multiple ? value.length < newValue.length : newValue !== null;
-      if (!isOptionSelected && !clearOnBlur) {
+      // A controlled single-value `freeSolo` reset to `null` should still clear the input.
+      const shouldClearOnReset = reason === 'reset' && freeSolo && !multiple && newValue === null;
+      if (!isOptionSelected && !clearOnBlur && !shouldClearOnReset) {
         return;
       }
       const newInputValue = getInputValue(newValue, multiple, getOptionLabel, renderValue);
@@ -218,6 +221,7 @@ function useAutocomplete(props) {
       onInputChange,
       setInputValueState,
       clearOnBlur,
+      freeSolo,
       value,
       renderValue,
     ],
@@ -852,7 +856,6 @@ function useAutocomplete(props) {
   };
 
   const handleClear = (event) => {
-    ignoreFocus.current = true;
     setInputValueState('');
 
     if (onInputChange) {
@@ -1229,11 +1232,11 @@ function useAutocomplete(props) {
   // Prevent input blur when interacting with the combobox
   const handleMouseDown = (event) => {
     // Prevent focusing the input if click is anywhere outside the Autocomplete
-    if (!event.currentTarget.contains(event.target)) {
+    if (!contains(event.currentTarget, event.target)) {
       return;
     }
     // Don't interfere with interactions outside the input area (e.g. helper text)
-    if (anchorEl && !anchorEl.contains(event.target)) {
+    if (anchorEl && !contains(anchorEl, event.target)) {
       return;
     }
     if (event.target.getAttribute('id') !== id) {
@@ -1244,11 +1247,11 @@ function useAutocomplete(props) {
   // Focus the input when interacting with the combobox
   const handleClick = (event) => {
     // Prevent focusing the input if click is anywhere outside the Autocomplete
-    if (!event.currentTarget.contains(event.target)) {
+    if (!contains(event.currentTarget, event.target)) {
       return;
     }
     // Don't interfere with interactions outside the input area (e.g. helper text)
-    if (anchorEl && !anchorEl.contains(event.target)) {
+    if (anchorEl && !contains(anchorEl, event.target)) {
       return;
     }
     inputRef.current.focus();
@@ -1353,7 +1356,10 @@ function useAutocomplete(props) {
     getClearProps: () => ({
       tabIndex: -1,
       type: 'button',
-      onClick: handleClear,
+      onClick: (event) => {
+        ignoreFocus.current = true;
+        handleClear(event);
+      },
     }),
     getItemProps: ({ index = 0 } = {}) => ({
       ...(multiple && { key: index }),

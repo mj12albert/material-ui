@@ -34,7 +34,6 @@ export function normalizedTransitionCallback(
     }
   };
 }
-
 type TransitionState = 'entering' | 'entered' | 'exiting' | 'exited';
 
 /**

@@ -16,6 +16,7 @@ import ListSubheader from '@mui/material/ListSubheader';
 import InputBase from '@mui/material/InputBase';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import InputLabel from '@mui/material/InputLabel';
+import FormControl from '@mui/material/FormControl';
 import Select from '@mui/material/Select';
 import Divider from '@mui/material/Divider';
 import { listClasses } from '@mui/material/List';
@@ -770,6 +771,60 @@ describe('<Select />', () => {
       const { container } = render(<Select disabled value="" />);
 
       expect(container.querySelector('input')).to.have.property('disabled', true);
+    });
+
+    it('removes the focused state if it gets disabled while selecting an option', async function test() {
+      clock.restore();
+
+      function DisableOnChangeSelect() {
+        const [disabled, setDisabled] = React.useState(false);
+        const [value, setValue] = React.useState('');
+
+        return (
+          <React.Fragment>
+            <FormControl>
+              <InputLabel id="age-label">Age</InputLabel>
+              <Select
+                disabled={disabled}
+                label="Age"
+                labelId="age-label"
+                MenuProps={{ transitionDuration: 0 }}
+                onChange={(event) => {
+                  setValue(event.target.value);
+                  setDisabled(true);
+                }}
+                value={value}
+              >
+                <MenuItem value={10}>Ten</MenuItem>
+                <MenuItem value={20}>Twenty</MenuItem>
+              </Select>
+            </FormControl>
+            <button type="button">After</button>
+          </React.Fragment>
+        );
+      }
+
+      const { user } = render(<DisableOnChangeSelect />);
+      const trigger = screen.getByRole('combobox', { name: 'Age' });
+      const label = screen.getByText('Age', { selector: 'label' });
+      const root = trigger.parentElement;
+
+      await user.tab();
+      expect(trigger).toHaveFocus();
+      expect(root).to.have.class(classes.focused);
+      expect(label).to.have.class(classes.focused);
+
+      await user.keyboard('{ArrowDown}');
+      await user.click(screen.getByRole('option', { name: 'Ten' }));
+
+      expect(trigger).to.have.attribute('aria-disabled', 'true');
+      expect(root).not.to.have.class(classes.focused);
+      expect(label).not.to.have.class(classes.focused);
+
+      await user.tab();
+      expect(screen.getByRole('button', { name: 'After' })).toHaveFocus();
+      expect(root).not.to.have.class(classes.focused);
+      expect(label).not.to.have.class(classes.focused);
     });
 
     it('aria-disabled is not present if component is not disabled', () => {

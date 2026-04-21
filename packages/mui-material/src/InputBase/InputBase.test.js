@@ -131,6 +131,45 @@ describe('<InputBase />', () => {
       expect(handleFocus.callCount).to.equal(1);
     });
 
+    it('should reset the focused FormControl state if getting disabled from the input', async () => {
+      function DisableOnChangeInput() {
+        const [disabled, setDisabled] = React.useState(false);
+
+        return (
+          <React.Fragment>
+            <FormControl>
+              <InputBase
+                aria-label="Name"
+                disabled={disabled}
+                onChange={() => {
+                  setDisabled(true);
+                }}
+              />
+            </FormControl>
+            <button type="button">After</button>
+          </React.Fragment>
+        );
+      }
+
+      const { container, user } = render(<DisableOnChangeInput />);
+      const input = screen.getByRole('textbox', { name: 'Name' });
+      const root = container.querySelector(`.${classes.root}`);
+
+      await user.click(input);
+      expect(input).toHaveFocus();
+      expect(root).to.have.class(classes.focused);
+
+      await user.keyboard('a');
+
+      expect(input).to.have.property('disabled', true);
+      expect(root).not.to.have.class(classes.focused);
+
+      await user.tab();
+
+      expect(input).not.toHaveFocus();
+      expect(screen.getByRole('button', { name: 'After' })).toHaveFocus();
+    });
+
     it('fires the click event when the <input /> is disabled', () => {
       const handleClick = spy();
       render(<InputBase disabled onClick={handleClick} />);

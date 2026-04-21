@@ -348,18 +348,26 @@ const InputBase = React.forwardRef(function InputBase(inProps, ref) {
     states: ['color', 'disabled', 'error', 'hiddenLabel', 'size', 'required', 'filled'],
   });
 
-  fcs.focused = muiFormControl ? muiFormControl.focused : focused;
+  const focusedState = muiFormControl ? muiFormControl.focused : focused;
+  fcs.focused = focusedState && !fcs.disabled;
 
   // The blur won't fire when the disabled state is set on a focused input.
   // We need to book keep the focused state manually.
   React.useEffect(() => {
-    if (!muiFormControl && disabled && focused) {
-      setFocused(false);
-      if (onBlur) {
-        onBlur();
-      }
+    if (!fcs.disabled || !focusedState) {
+      return;
     }
-  }, [muiFormControl, disabled, focused, onBlur]);
+
+    if (muiFormControl) {
+      muiFormControl.onBlur();
+    } else {
+      setFocused(false);
+    }
+
+    if (onBlur) {
+      onBlur();
+    }
+  }, [fcs.disabled, focusedState, muiFormControl, onBlur]);
 
   const onFilled = muiFormControl && muiFormControl.onFilled;
   const onEmpty = muiFormControl && muiFormControl.onEmpty;

@@ -36,6 +36,7 @@ export { default as responsiveFontSizes } from './responsiveFontSizes';
 export {
   Duration,
   Easing,
+  ReducedMotionMode,
   Transitions,
   TransitionsOptions,
   duration,

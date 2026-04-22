@@ -10,12 +10,12 @@ describe('<Transition />', () => {
   const { clock, render } = createRenderer();
 
   type TestHandlers = {
-    onEnter?: sinon.SinonSpy;
-    onEntering?: sinon.SinonSpy;
-    onEntered?: sinon.SinonSpy;
-    onExit?: sinon.SinonSpy;
-    onExiting?: sinon.SinonSpy;
-    onExited?: sinon.SinonSpy;
+    onEnter?: (isAppearing: boolean) => void;
+    onEntering?: (isAppearing: boolean) => void;
+    onEntered?: (isAppearing: boolean) => void;
+    onExit?: () => void;
+    onExiting?: () => void;
+    onExited?: () => void;
   };
 
   function TestHarness(props: {
@@ -25,6 +25,8 @@ describe('<Transition />', () => {
     exit?: boolean;
     timeout?: number | null | { enter?: number; exit?: number; appear?: number };
     addEndListener?: ((done: () => void) => void) | ((node: HTMLElement, done: () => void) => void);
+    reduceMotion?: boolean;
+    getAutoTimeout?: () => number | null | undefined;
     mountOnEnter?: boolean;
     unmountOnExit?: boolean;
     handlers?: TestHandlers;
@@ -38,6 +40,8 @@ describe('<Transition />', () => {
         exit={props.exit}
         timeout={props.timeout}
         addEndListener={props.addEndListener}
+        reduceMotion={props.reduceMotion}
+        getAutoTimeout={props.getAutoTimeout}
         mountOnEnter={props.mountOnEnter}
         unmountOnExit={props.unmountOnExit}
         nodeRef={nodeRef}
@@ -92,7 +96,7 @@ describe('<Transition />', () => {
   describe('transitions', () => {
     clock.withFakeTimers();
 
-    it('progresses exited → entering → entered on in=true', () => {
+    it('progresses exited -> entering -> entered on in=true', () => {
       const handlers = { onEnter: spy(), onEntering: spy(), onEntered: spy() };
       const { setProps } = render(<TestHarness in={false} timeout={100} handlers={handlers} />);
       setProps({ in: true });
@@ -104,7 +108,7 @@ describe('<Transition />', () => {
       expect(handlers.onEntered!.callCount).to.be.greaterThanOrEqual(1);
     });
 
-    it('progresses entered → exiting → exited on in=false', () => {
+    it('progresses entered -> exiting -> exited on in=false', () => {
       const handlers = { onExit: spy(), onExiting: spy(), onExited: spy() };
       const { setProps } = render(
         <TestHarness in appear={false} timeout={100} handlers={handlers} />,
@@ -280,7 +284,7 @@ describe('<Transition />', () => {
       expect(onEntered.callCount).to.equal(1);
     });
 
-    it('addEndListener and timeout race — first completion wins, second is no-op', () => {
+    it('addEndListener and timeout race - first completion wins, second is no-op', () => {
       const onEntered = spy();
       let done: (() => void) | null = null;
       const addEndListener = (_node: HTMLElement, next: () => void) => {
@@ -302,6 +306,100 @@ describe('<Transition />', () => {
       expect(onEntered.callCount).to.equal(1);
       // Timeout also expires, but the cancellation token makes it a no-op.
       clock.tick(200);
+      expect(onEntered.callCount).to.equal(1);
+    });
+  });
+
+  describe('reduced motion completion', () => {
+    clock.withFakeTimers();
+
+    it('timeout-only transitions complete next-task async under reduced motion', () => {
+      const onEntered = spy();
+      const { setProps } = render(
+        <TestHarness in={false} timeout={200} reduceMotion handlers={{ onEntered }} />,
+      );
+
+      setProps({ in: true });
+      expect(onEntered.callCount).to.equal(0);
+
+      clock.tick(0);
+      expect(onEntered.callCount).to.equal(1);
+    });
+
+    it('listener-only transitions stay listener-owned under reduced motion', () => {
+      const onEntered = spy();
+      let done: (() => void) | null = null;
+      const addEndListener = (next: () => void) => {
+        done = next;
+      };
+
+      const { setProps } = render(
+        <TestHarness
+          in={false}
+          timeout={null}
+          addEndListener={addEndListener}
+          reduceMotion
+          handlers={{ onEntered }}
+        />,
+      );
+
+      setProps({ in: true });
+      clock.tick(1000);
+      expect(onEntered.callCount).to.equal(0);
+
+      act(() => {
+        done!();
+      });
+      expect(onEntered.callCount).to.equal(1);
+    });
+
+    it('listener + timeout does not inject a reduced-motion 0ms preemption', () => {
+      const onEntered = spy();
+      let done: (() => void) | null = null;
+      const addEndListener = (next: () => void) => {
+        done = next;
+      };
+
+      const { setProps } = render(
+        <TestHarness
+          in={false}
+          timeout={200}
+          addEndListener={addEndListener}
+          reduceMotion
+          handlers={{ onEntered }}
+        />,
+      );
+
+      setProps({ in: true });
+      clock.tick(200);
+      expect(onEntered.callCount).to.equal(0);
+
+      act(() => {
+        done!();
+      });
+      expect(onEntered.callCount).to.equal(1);
+    });
+
+    it('uses the live getAutoTimeout transport', () => {
+      const onEntered = spy();
+      let autoTimeout: number | null = null;
+      const onEntering = () => {
+        autoTimeout = 75;
+      };
+
+      const { setProps } = render(
+        <TestHarness
+          in={false}
+          timeout={null}
+          getAutoTimeout={() => autoTimeout}
+          handlers={{ onEntering, onEntered }}
+        />,
+      );
+
+      setProps({ in: true });
+      clock.tick(74);
+      expect(onEntered.callCount).to.equal(0);
+      clock.tick(1);
       expect(onEntered.callCount).to.equal(1);
     });
   });
@@ -536,8 +634,8 @@ describe('<Transition />', () => {
       expect(screen.getByTestId('target')).to.have.attribute('data-status', 'exited');
     });
 
-    it('does NOT fire onExited during the unmounted→exited hop on first open', () => {
-      // Regression: the synthetic 'unmounted' → 'exited' render pass must
+    it('does NOT fire onExited during the unmounted->exited hop on first open', () => {
+      // Regression: the synthetic 'unmounted' -> 'exited' render pass must
       // not be mistaken for a real exit completion. Opening the component
       // must only fire the enter lifecycle callbacks.
       const handlers = {
@@ -606,6 +704,143 @@ describe('<Transition />', () => {
     });
   });
 
+  describe.each([false, true])('parity invariants reduceMotion=%s', (reduceMotion) => {
+    clock.withFakeTimers();
+
+    it('suppresses synthetic unmounted -> exited callbacks', () => {
+      const handlers = {
+        onEnter: spy(),
+        onEntering: spy(),
+        onEntered: spy(),
+        onExit: spy(),
+        onExiting: spy(),
+        onExited: spy(),
+      };
+      const { setProps } = render(
+        <TestHarness
+          in={false}
+          mountOnEnter
+          unmountOnExit
+          timeout={100}
+          reduceMotion={reduceMotion}
+          handlers={handlers}
+        />,
+      );
+
+      setProps({ in: true });
+      if (reduceMotion) {
+        clock.tick(0);
+      } else {
+        clock.tick(100);
+      }
+
+      expect(handlers.onExit!.callCount).to.equal(0);
+      expect(handlers.onExiting!.callCount).to.equal(0);
+      expect(handlers.onExited!.callCount).to.equal(0);
+      expect(handlers.onEnter!.callCount).to.be.greaterThanOrEqual(1);
+    });
+
+    it('preserves nested TransitionGroupContext reset', () => {
+      const mountedGroup = { isMounting: false };
+      const nestedOnEnter = spy();
+
+      function NestedTree() {
+        const outerRef = React.useRef<HTMLDivElement>(null);
+        const innerRef = React.useRef<HTMLSpanElement>(null);
+
+        return (
+          <Transition in appear timeout={100} nodeRef={outerRef} reduceMotion={reduceMotion}>
+            {(outerStatus) => (
+              <div ref={outerRef} data-status={outerStatus}>
+                <Transition
+                  in
+                  appear
+                  timeout={50}
+                  nodeRef={innerRef}
+                  reduceMotion={reduceMotion}
+                  onEnter={nestedOnEnter}
+                >
+                  {(innerStatus) => (
+                    <span ref={innerRef} data-testid="inner" data-status={innerStatus} />
+                  )}
+                </Transition>
+              </div>
+            )}
+          </Transition>
+        );
+      }
+
+      render(
+        <RtgTransitionGroupContext.Provider value={mountedGroup}>
+          <NestedTree />
+        </RtgTransitionGroupContext.Provider>,
+      );
+
+      expect(nestedOnEnter.callCount).to.be.greaterThanOrEqual(1);
+      expect(nestedOnEnter.args[0][0]).to.equal(true);
+    });
+
+    it('preserves interrupted enter -> exit behavior', () => {
+      const handlers = {
+        onEntered: spy(),
+        onExit: spy(),
+        onExited: spy(),
+      };
+      const { setProps } = render(
+        <TestHarness in={false} timeout={200} reduceMotion={reduceMotion} handlers={handlers} />,
+      );
+
+      setProps({ in: true });
+      clock.tick(reduceMotion ? 0 : 50);
+      setProps({ in: false });
+      expect(handlers.onEntered!.callCount).to.equal(reduceMotion ? 1 : 0);
+      expect(handlers.onExit!.callCount).to.equal(1);
+      clock.tick(reduceMotion ? 0 : 200);
+      expect(handlers.onExited!.callCount).to.equal(1);
+    });
+
+    it('preserves interrupted exit -> enter behavior', () => {
+      const handlers = {
+        onExited: spy(),
+        onEnter: spy(),
+        onEntered: spy(),
+      };
+      const { setProps } = render(
+        <TestHarness
+          in
+          appear={false}
+          timeout={200}
+          reduceMotion={reduceMotion}
+          handlers={handlers}
+        />,
+      );
+
+      setProps({ in: false });
+      clock.tick(reduceMotion ? 0 : 50);
+      setProps({ in: true });
+      expect(handlers.onEnter!.callCount).to.be.greaterThanOrEqual(1);
+      clock.tick(reduceMotion ? 0 : 200);
+      expect(handlers.onEntered!.callCount).to.be.greaterThanOrEqual(1);
+    });
+
+    it('does not fire callbacks after unmount', () => {
+      const onEntered = spy();
+      const { setProps, unmount } = render(
+        <TestHarness
+          in={false}
+          timeout={100}
+          reduceMotion={reduceMotion}
+          handlers={{ onEntered }}
+        />,
+      );
+
+      setProps({ in: true });
+      unmount();
+      clock.tick(200);
+      expect(onEntered.callCount).to.equal(0);
+    });
+  });
+
   describe('RTG TransitionGroupContext interop', () => {
     clock.withFakeTimers();
 
@@ -634,7 +869,7 @@ describe('<Transition />', () => {
       const { setProps } = render(<ChildWrapper shouldRender={false} />);
       setProps({ shouldRender: true });
 
-      // Entered, not skipped — the context bridge re-enables the enter animation.
+      // Entered, not skipped - the context bridge re-enables the enter animation.
       expect(handlers.onEnter!.callCount).to.be.greaterThanOrEqual(1);
       // isAppearing must be false because the parent already mounted.
       expect(handlers.onEnter!.args[0][0]).to.equal(false);

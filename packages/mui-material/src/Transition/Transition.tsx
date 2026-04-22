@@ -42,6 +42,8 @@ interface InternalTransitionProps {
   mountOnEnter?: boolean | undefined;
   unmountOnExit?: boolean | undefined;
   addEndListener?: TransitionEndListener | undefined;
+  reduceMotion?: boolean | undefined;
+  getAutoTimeout?: (() => number | null | undefined) | undefined;
   onEnter?: ((isAppearing: boolean) => void) | undefined;
   onEntering?: ((isAppearing: boolean) => void) | undefined;
   onEntered?: ((isAppearing: boolean) => void) | undefined;
@@ -68,6 +70,32 @@ function resolveTimeouts(timeout: InternalTransitionProps['timeout']): ResolvedT
   return { appear, enter, exit };
 }
 
+/**
+ * Resolves the authored completion timeout for the current transition phase.
+ * Auto durations are read by the caller at scheduling time so Grow/Collapse
+ * can pass the latest measured value without storing it in React state.
+ */
+function getCompletionTimeout(params: {
+  currentStatus: 'entering' | 'exiting';
+  isAppearing: boolean;
+  timeout: InternalTransitionProps['timeout'];
+  autoTimeout?: number | null | undefined;
+}): number | null {
+  if (params.autoTimeout != null) {
+    return params.autoTimeout;
+  }
+
+  const resolved = resolveTimeouts(params.timeout);
+
+  if (params.currentStatus === 'entering') {
+    return params.isAppearing
+      ? (resolved.appear ?? resolved.enter ?? null)
+      : (resolved.enter ?? null);
+  }
+
+  return resolved.exit ?? null;
+}
+
 function Transition(props: InternalTransitionProps): React.ReactNode {
   const {
     in: inProp = false,
@@ -78,6 +106,8 @@ function Transition(props: InternalTransitionProps): React.ReactNode {
     unmountOnExit = false,
     timeout,
     addEndListener,
+    reduceMotion = false,
+    getAutoTimeout,
     nodeRef,
     onEnter,
     onEntering,
@@ -131,6 +161,8 @@ function Transition(props: InternalTransitionProps): React.ReactNode {
   const propsRef = useValueAsRef({
     timeout,
     addEndListener,
+    reduceMotion,
+    getAutoTimeout,
     onEnter,
     onEntering,
     onEntered,
@@ -168,16 +200,29 @@ function Transition(props: InternalTransitionProps): React.ReactNode {
     return wrapped;
   };
 
-  const scheduleTransitionEnd = (timeoutValue: number | undefined, handler: () => void) => {
-    const done = makeCallback(handler);
+  const scheduleTransitionEnd = (
+    nextStatus: 'entered' | 'exited',
+    currentStatus: 'entering' | 'exiting',
+  ) => {
+    const done = makeCallback(() => {
+      statusRef.current = nextStatus;
+      setStatus(nextStatus);
+    });
     const node = propsRef.current.nodeRef.current;
     const listener = propsRef.current.addEndListener;
-    const noTimeoutOrListener = timeoutValue == null && !listener;
+    const autoTimeout = propsRef.current.getAutoTimeout?.();
+    const authoredTimeout = getCompletionTimeout({
+      currentStatus,
+      isAppearing: isAppearingRef.current,
+      timeout: propsRef.current.timeout,
+      autoTimeout,
+    });
 
-    if (!node || noTimeoutOrListener) {
+    if (!node) {
       setTimeout(done, 0);
       return;
     }
+
     if (listener) {
       // RTG calls addEndListener(done) when nodeRef is used, but MUI still
       // supports the direct consumer shape addEndListener(node, done). The
@@ -188,10 +233,15 @@ function Transition(props: InternalTransitionProps): React.ReactNode {
       } else {
         (listener as (done: () => void) => void)(done);
       }
+
+      if (!propsRef.current.reduceMotion && authoredTimeout != null) {
+        setTimeout(done, authoredTimeout);
+      }
+
+      return;
     }
-    if (timeoutValue != null) {
-      setTimeout(done, timeoutValue);
-    }
+
+    setTimeout(done, propsRef.current.reduceMotion ? 0 : (authoredTimeout ?? 0));
   };
 
   const performEnter = (mounting: boolean) => {
@@ -316,19 +366,10 @@ function Transition(props: InternalTransitionProps): React.ReactNode {
     const current = propsRef.current;
     if (status === 'entering') {
       current.onEntering?.(isAppearingRef.current);
-      const timeouts = resolveTimeouts(current.timeout);
-      const enterTimeout = isAppearingRef.current ? timeouts.appear : timeouts.enter;
-      scheduleTransitionEnd(enterTimeout, () => {
-        statusRef.current = 'entered';
-        setStatus('entered');
-      });
+      scheduleTransitionEnd('entered', 'entering');
     } else if (status === 'exiting') {
       current.onExiting?.();
-      const timeouts = resolveTimeouts(current.timeout);
-      scheduleTransitionEnd(timeouts.exit, () => {
-        statusRef.current = 'exited';
-        setStatus('exited');
-      });
+      scheduleTransitionEnd('exited', 'exiting');
     } else if (status === 'entered') {
       current.onEntered?.(isAppearingRef.current);
     } else if (status === 'exited') {
@@ -378,6 +419,10 @@ Transition.propTypes /* remove-proptypes */ = {
   /**
    * @ignore
    */
+  getAutoTimeout: PropTypes.func,
+  /**
+   * @ignore
+   */
   in: PropTypes.bool,
   /**
    * @ignore
@@ -421,6 +466,10 @@ Transition.propTypes /* remove-proptypes */ = {
    * @ignore
    */
   onExiting: PropTypes.func,
+  /**
+   * @ignore
+   */
+  reduceMotion: PropTypes.bool,
   /**
    * @ignore
    */

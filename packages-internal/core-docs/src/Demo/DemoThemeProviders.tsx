@@ -9,6 +9,9 @@ const defaultTheme = createTheme({
   cssVariables: {
     colorSchemeSelector: 'data-mui-color-scheme',
   },
+  transitions: {
+    reducedMotion: 'system',
+  },
 });
 
 export function DemoPageThemeProvider({ children }: React.PropsWithChildren<{}>) {
@@ -42,6 +45,9 @@ export function DemoInstanceThemeProvider({
           dark: true,
         },
         direction: direction as 'ltr' | 'rtl',
+        transitions: {
+          reducedMotion: 'system',
+        },
       },
       dense ? highDensity : {},
     );

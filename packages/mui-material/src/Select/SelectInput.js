@@ -39,8 +39,8 @@ function isMouseEventInsideElement(event, element) {
     return false;
   }
 
-  const eventPath = event.composedPath?.();
-  if (eventPath?.includes(element)) {
+  const eventPath = event.composedPath();
+  if (eventPath.includes(element)) {
     return true;
   }
 
@@ -50,6 +50,7 @@ function isMouseEventInsideElement(event, element) {
 
   const rect = element.getBoundingClientRect();
   if (rect.width === 0 && rect.height === 0) {
+    // Hidden or transition-mounted elements do not have useful bounds to hit-test.
     return false;
   }
 
@@ -342,10 +343,10 @@ const SelectInput = React.forwardRef(function SelectInput(props, ref) {
     }
   });
 
-  const scheduleMouseUpSelection = (hasSelectedItemInList) => {
+  const scheduleMouseUpSelection = () => {
     resetMouseUpSelection();
 
-    if (!hasSelectedItemInList) {
+    if (!hasSelectedItemInListRef.current) {
       selectedMouseUpTimer.start(SELECTED_MOUSE_UP_DELAY, () => {
         selectionRef.current.allowSelectedMouseUp = true;
         selectionRef.current.allowUnselectedMouseUp = true;
@@ -373,7 +374,7 @@ const SelectInput = React.forwardRef(function SelectInput(props, ref) {
 
     const doc = ownerDocument(event.currentTarget);
 
-    scheduleMouseUpSelection(hasSelectedItemInListRef.current);
+    scheduleMouseUpSelection();
     clearOpeningMouseUpListener();
 
     const handleMouseUp = (mouseEvent) => {

@@ -485,10 +485,10 @@ const SelectInput = React.forwardRef(function SelectInput(props, ref) {
       return;
     }
 
-    if (
-      (selected && !selectionRef.current.allowSelectedMouseUp) ||
-      (!selected && !selectionRef.current.allowUnselectedMouseUp)
-    ) {
+    const disallowSelectedMouseUp = !selectionRef.current.allowSelectedMouseUp && selected;
+    const disallowUnselectedMouseUp = !selectionRef.current.allowUnselectedMouseUp && !selected;
+
+    if (disallowSelectedMouseUp || disallowUnselectedMouseUp) {
       return;
     }
 

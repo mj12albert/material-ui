@@ -225,6 +225,33 @@ describe('<Select />', () => {
       expect(screen.queryByRole('listbox', { hidden: false })).not.to.equal(null);
     });
 
+    it('closes when the opening mouseup lands on the selected option after the selected-item delay', async () => {
+      const onClose = spy();
+      const { user } = render(
+        <Select defaultValue={10} onClose={onClose}>
+          <MenuItem value={10}>Ten</MenuItem>
+          <MenuItem value={20}>Twenty</MenuItem>
+          <MenuItem value={30}>Thirty</MenuItem>
+        </Select>,
+      );
+
+      const trigger = screen.getByRole('combobox');
+      await user.pointer({ keys: '[MouseLeft>]', target: trigger });
+
+      await act(async () => {
+        await sleep(450);
+      });
+
+      await user.pointer({
+        keys: '[/MouseLeft]',
+        target: screen.getByRole('option', { name: 'Ten' }),
+      });
+
+      expect(onClose.callCount).to.equal(1);
+      expect(trigger).to.have.text('Ten');
+      expect(screen.queryByRole('listbox', { hidden: false })).to.equal(null);
+    });
+
     it('selects an option when dragging from the trigger and releasing after the drag delay', async () => {
       const onChange = spy();
       const { user } = render(

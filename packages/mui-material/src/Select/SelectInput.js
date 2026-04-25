@@ -346,15 +346,20 @@ const SelectInput = React.forwardRef(function SelectInput(props, ref) {
   const scheduleMouseUpSelection = () => {
     resetMouseUpSelection();
 
+    // When there is no selected item in the list, a mousedown
+    // on the trigger followed by a quick mouseup over the first option can accidentally select
+    // within 200ms. Delay unselected mouseup to match the safer 400ms window.
     if (!hasSelectedItemInListRef.current) {
       selectedMouseUpTimer.start(SELECTED_MOUSE_UP_DELAY, () => {
         selectionRef.current.allowSelectedMouseUp = true;
         selectionRef.current.allowUnselectedMouseUp = true;
       });
     } else {
+      // mousedown -> move to unselected item -> mouseup should not select within 200ms.
       unselectedMouseUpTimer.start(UNSELECTED_MOUSE_UP_DELAY, () => {
         selectionRef.current.allowUnselectedMouseUp = true;
 
+        // mousedown -> mouseup on selected item should not select within 400ms.
         selectedMouseUpTimer.start(UNSELECTED_MOUSE_UP_DELAY, () => {
           selectionRef.current.allowSelectedMouseUp = true;
         });

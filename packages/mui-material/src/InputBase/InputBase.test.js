@@ -7,6 +7,7 @@ import {
   createRenderer,
   fireEvent,
   screen,
+  waitFor,
   reactMajor,
   isJsdom,
 } from '@mui/internal-test-utils';
@@ -144,6 +145,7 @@ describe('<InputBase />', () => {
                 onChange={() => {
                   setDisabled(true);
                 }}
+                slotProps={{ root: { 'data-testid': 'input-root' } }}
               />
             </FormControl>
             <button type="button">After</button>
@@ -151,9 +153,9 @@ describe('<InputBase />', () => {
         );
       }
 
-      const { container, user } = render(<DisableOnChangeInput />);
+      const { user } = render(<DisableOnChangeInput />);
       const input = screen.getByRole('textbox', { name: 'Name' });
-      const root = container.querySelector(`.${classes.root}`);
+      const root = screen.getByTestId('input-root');
 
       await user.click(input);
       expect(input).toHaveFocus();
@@ -168,6 +170,43 @@ describe('<InputBase />', () => {
 
       expect(input).not.toHaveFocus();
       expect(screen.getByRole('button', { name: 'After' })).toHaveFocus();
+    });
+
+    it('should not restore the focused FormControl state if re-enabled without a blur event', async () => {
+      function DisableOnChangeInput() {
+        const [disabled, setDisabled] = React.useState(false);
+
+        return (
+          <FormControl>
+            <InputBase
+              aria-label="Name"
+              disabled={disabled}
+              onChange={() => {
+                setDisabled(true);
+                setTimeout(() => {
+                  setDisabled(false);
+                });
+              }}
+              slotProps={{ root: { 'data-testid': 'input-root' } }}
+            />
+          </FormControl>
+        );
+      }
+
+      const { user } = render(<DisableOnChangeInput />);
+      const input = screen.getByRole('textbox', { name: 'Name' });
+      const root = screen.getByTestId('input-root');
+
+      await user.click(input);
+      expect(input).toHaveFocus();
+      expect(root).to.have.class(classes.focused);
+
+      await user.keyboard('a');
+
+      await waitFor(() => {
+        expect(input).to.have.property('disabled', false);
+      });
+      expect(root).not.to.have.class(classes.focused);
     });
 
     it('fires the click event when the <input /> is disabled', () => {

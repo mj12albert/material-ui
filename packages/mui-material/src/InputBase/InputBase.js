@@ -358,7 +358,7 @@ const InputBase = React.forwardRef(function InputBase(inProps, ref) {
       return;
     }
 
-    if (muiFormControl) {
+    if (muiFormControl?.onBlur) {
       muiFormControl.onBlur();
     } else {
       setFocused(false);

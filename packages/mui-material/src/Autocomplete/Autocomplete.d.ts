@@ -76,6 +76,7 @@ export type AutocompleteRenderValueGetItemProps<Multiple extends boolean | undef
         disabled: boolean;
         'data-item-index': number;
         tabIndex: -1;
+        onClick: (event: any) => void;
         onDelete: (event: any) => void;
       };
 

@@ -362,6 +362,7 @@ export type AutocompleteGetItemProps<Multiple extends boolean | undefined> = Mul
   : (args?: { index?: number | undefined }) => {
       'data-item-index': number;
       tabIndex: -1;
+      onClick: (event: any) => void;
       onDelete: (event: any) => void;
     };
 

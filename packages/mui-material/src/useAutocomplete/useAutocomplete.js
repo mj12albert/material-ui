@@ -1255,6 +1255,12 @@ function useAutocomplete(props) {
     });
   };
 
+  const handleSingleItemClick = (event) => {
+    if (!disabledProp) {
+      handleOpen(event);
+    }
+  };
+
   const handlePopupIndicator = (event) => {
     if (open) {
       handleClose(event, 'toggleInput');
@@ -1399,6 +1405,7 @@ function useAutocomplete(props) {
       ...(multiple && { key: index }),
       'data-item-index': index,
       tabIndex: -1,
+      ...(!multiple && renderValue && { onClick: handleSingleItemClick }),
       ...(!readOnly && { onDelete: multiple ? handleItemDelete(index) : handleSingleItemDelete }),
     }),
     getPopupIndicatorProps: () => ({

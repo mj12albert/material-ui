@@ -4537,6 +4537,66 @@ describe('<Autocomplete />', () => {
       expect(textbox).toHaveComputedStyle({ opacity: '1' });
     });
 
+    it('should open the popup when clicking the rendered value', async () => {
+      const { user } = render(
+        <Autocomplete
+          defaultValue="one"
+          options={['one', 'two']}
+          renderInput={(params) => <TextField {...params} />}
+          renderValue={(value, getItemProps) => <Chip label={value} {...getItemProps()} />}
+        />,
+      );
+
+      expect(screen.queryByRole('listbox')).to.equal(null);
+
+      await user.click(screen.getByRole('button', { name: 'one' }));
+
+      expect(screen.getByRole('listbox')).not.to.equal(null);
+    });
+
+    it('should not open the popup when deleting the rendered value', async () => {
+      const { user } = render(
+        <Autocomplete
+          defaultValue="one"
+          options={['one', 'two']}
+          renderInput={(params) => <TextField {...params} />}
+          renderValue={(value, getItemProps) => (
+            <Chip
+              label={value}
+              deleteIcon={<span aria-label="Remove one">x</span>}
+              {...getItemProps()}
+            />
+          )}
+        />,
+      );
+
+      expect(screen.getByRole('button', { name: /one/ })).not.to.equal(null);
+
+      await user.click(screen.getByLabelText('Remove one'));
+
+      expect(screen.queryByRole('button', { name: /one/ })).to.equal(null);
+      expect(screen.queryByRole('listbox')).to.equal(null);
+    });
+
+    it('should not open the popup when clicking a disabled rendered value', async () => {
+      const { user } = render(
+        <Autocomplete
+          defaultValue="one"
+          disabled
+          options={['one', 'two']}
+          renderInput={(params) => <TextField {...params} />}
+          renderValue={(value, getItemProps) => {
+            const { onDelete, ...itemProps } = getItemProps();
+            return <span {...itemProps}>{value}</span>;
+          }}
+        />,
+      );
+
+      await user.click(screen.getByText('one'));
+
+      expect(screen.queryByRole('listbox')).to.equal(null);
+    });
+
     it('should allow zero number (0) as a value to render', () => {
       const view = render(
         <Autocomplete

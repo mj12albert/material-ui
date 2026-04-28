@@ -114,22 +114,50 @@ describe('<InputBase />', () => {
       expect(input).to.have.class(classes.disabled);
     });
 
-    it('should reset the focused state if getting disabled', () => {
+    it('should reset the focused state if getting disabled', async () => {
       const handleBlur = spy();
       const handleFocus = spy();
-      const { container, setProps } = render(
-        <InputBase onBlur={handleBlur} onFocus={handleFocus} />,
-      );
 
-      act(() => {
-        container.querySelector('input').focus();
+      function DisableOnChangeInput() {
+        const [disabled, setDisabled] = React.useState(false);
+
+        return (
+          <InputBase
+            aria-label="Name"
+            disabled={disabled}
+            onBlur={handleBlur}
+            onChange={() => {
+              setDisabled(true);
+              setTimeout(() => {
+                setDisabled(false);
+              });
+            }}
+            onFocus={handleFocus}
+            slotProps={{ root: { 'data-testid': 'input-root' } }}
+          />
+        );
+      }
+
+      const { user } = render(<DisableOnChangeInput />);
+      const input = screen.getByRole('textbox', { name: 'Name' });
+      const root = screen.getByTestId('input-root');
+
+      await user.click(input);
+      expect(input).toHaveFocus();
+      expect(root).to.have.class(classes.focused);
+      expect(handleFocus.callCount).to.equal(1);
+
+      await user.keyboard('a');
+
+      await waitFor(() => {
+        expect(handleBlur.callCount).to.equal(1);
       });
       expect(handleFocus.callCount).to.equal(1);
 
-      setProps({ disabled: true });
-      expect(handleBlur.callCount).to.equal(1);
-      // check if focus not initiated again
-      expect(handleFocus.callCount).to.equal(1);
+      await waitFor(() => {
+        expect(input).to.have.property('disabled', false);
+      });
+      expect(root).not.to.have.class(classes.focused);
     });
 
     it('should reset the focused FormControl state if getting disabled from the input', async () => {

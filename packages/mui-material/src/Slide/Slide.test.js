@@ -202,7 +202,7 @@ describe('<Slide />', () => {
               return r;
             });
           } catch (error) {
-            // already stubbed
+            // The test may render this element more than once.
           }
         }
       };
@@ -421,7 +421,7 @@ describe('<Slide />', () => {
     });
 
     describe('prop: container', () => {
-      // Need layout
+      // This test needs real layout measurements.
       it.skipIf(isJsdom())(
         'should set element transform and transition in the `up` direction',
         async function test() {
@@ -491,11 +491,10 @@ describe('<Slide />', () => {
         expect(child.style.transform).not.to.equal(undefined);
       });
 
-      // getComputedStyle in a real browser resolves CSS transforms to matrix() format,
-      // which the component parses to account for existing offsets. jsdom does not resolve
-      // CSS values, so this test only runs in browser environments.
-      // The transform must come from a CSS rule (not inline style) because getTranslateValue
-      // clears inline transforms before reading computed style.
+      // Browsers resolve CSS transforms from stylesheets to matrix() values,
+      // which Slide parses to include existing offsets. jsdom does not resolve
+      // CSS values. The transform must come from a CSS rule, not inline style,
+      // because Slide clears inline transforms before reading computed style.
       it.skipIf(isJsdom())('should take existing transform into account', function test() {
         const styleEl = document.createElement('style');
         styleEl.textContent = '#slide-test-transform { transform: matrix(1, 0, 0, 1, 0, 420); }';
